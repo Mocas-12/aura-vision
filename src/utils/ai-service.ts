@@ -15,6 +15,7 @@ export async function recognizeNearestCenterObject(opts: {
   apiKey: string
   imageDataUrl: string
   prompt?: string
+  signal?: AbortSignal
 }): Promise<Recognition | null> {
   const url = 'https://integrate.api.nvidia.com/v1/chat/completions'
   const requestBody = {
@@ -65,6 +66,7 @@ export async function recognizeNearestCenterObject(opts: {
         Accept: 'application/json',
       },
       body: JSON.stringify(requestBody),
+      signal: opts.signal,
     })
     if (!res.ok) {
       const errText = await res.text()

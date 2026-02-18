@@ -14,6 +14,8 @@ export default function App() {
   const lastSigRef = useRef<string>('')
   const buildTimeRef = useRef<string>(new Date().toISOString())
   const [proc, setProc] = useState<string>('idle')
+  const isProcessingRef = useRef<boolean>(false)
+  const abortRef = useRef<AbortController | null>(null)
 
   const typedName = useTypewriter(rec?.name ?? '', 15)
   const typedIntro = useTypewriter(rec?.intro ?? '', 10)
@@ -63,7 +65,7 @@ export default function App() {
         setRec({ name: '未配置 API Key', intro: '请在环境变量中设置 VITE_GEMINI_API_KEY', facts: '' })
         return
       }
-      if (busy) return
+      if (busy || isProcessingRef.current) return
       const v = videoRef.current
       const c = canvasRef.current
       if (!v || !c) {
@@ -88,30 +90,46 @@ export default function App() {
       crop.height = side
       const cctx = crop.getContext('2d')
       cctx?.drawImage(c, sx, sy, side, side, 0, 0, side, side)
-      const targetSize = Math.min(side, 800)
+      const targetSize = Math.min(side, 640)
       const out = document.createElement('canvas')
       out.width = targetSize
       out.height = targetSize
       const octx = out.getContext('2d')
       octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
-      const dataUrl = out.toDataURL('image/jpeg', 0.6)
+      let dataUrl: string | null = out.toDataURL('image/jpeg', 0.5)
       setBusy(true)
       setProc('fetching')
+      isProcessingRef.current = true
+      if (abortRef.current) {
+        try {
+          abortRef.current.abort()
+        } catch (err) {
+          console.warn('abort previous request error', err)
+        }
+        abortRef.current = null
+      }
+      abortRef.current = new AbortController()
       try {
         const timeoutTag = Symbol('timeout')
         const resultOrTimeout = await Promise.race([
           recognizeNearestCenterObject({
             apiKey,
-            imageDataUrl: dataUrl,
+            imageDataUrl: dataUrl!,
+            signal: abortRef.current.signal,
           }),
           new Promise<Recognition | symbol>((resolve) =>
-            setTimeout(() => resolve(timeoutTag), 10000),
+            setTimeout(() => resolve(timeoutTag), 8000),
           ),
         ])
         if (resultOrTimeout === timeoutTag) {
           console.warn('Processing Status: timeout')
           setProc('timeout')
           setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()}` })
+          setBusy(false)
+          isProcessingRef.current = false
+          abortRef.current?.abort()
+          abortRef.current = null
+          dataUrl = null
           return
         }
         const result = resultOrTimeout as Recognition | null
@@ -150,6 +168,9 @@ export default function App() {
         setProc('error')
       } finally {
         setBusy(false)
+        isProcessingRef.current = false
+        abortRef.current = null
+        dataUrl = null
       }
     }, 5000)
     return () => window.clearInterval(interval)
@@ -188,7 +209,7 @@ export default function App() {
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-white/60">
-              {busy ? 'AI 正在深度思考中，请稍候...' : '每 5 秒更新一次'} · Build: {buildTimeRef.current} · {proc}
+              Status: {busy ? 'Busy' : 'Ready'} | Build: {buildTimeRef.current} · {proc}
             </div>
           </div>
           <div className="mt-2">
