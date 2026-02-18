@@ -19,11 +19,16 @@ export async function recognizeNearestCenterObject(opts: {
   const url = 'https://integrate.api.nvidia.com/v1/chat/completions'
   const requestBody = {
     model: 'meta/llama-3.2-11b-vision-instruct',
+    temperature: 0.1,
     messages: [
+      {
+        role: 'system',
+        content: [{ type: 'text', text: '你是一个专业的视觉助手。请始终使用简体中文回答，严禁使用英文。' }],
+      },
       {
         role: 'user',
         content: [
-          { type: 'text', text: opts.prompt ?? '请用中文简短描述图中物体，不超过20个字。' },
+          { type: 'text', text: '识别图中物体，并直接给出中文描述，严禁输出英文。' },
           { type: 'image_url', image_url: { url: opts.imageDataUrl } },
         ],
       },

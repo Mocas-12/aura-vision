@@ -12,6 +12,7 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const lastSigRef = useRef<string>('')
+  const buildTimeRef = useRef<string>(new Date().toISOString())
 
   const typedName = useTypewriter(rec?.name ?? '', 15)
   const typedIntro = useTypewriter(rec?.intro ?? '', 10)
@@ -168,7 +169,7 @@ export default function App() {
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-white/60">
-              {busy ? 'AI 正在深度思考中，请稍候...' : '每 5 秒更新一次'}
+              {busy ? 'AI 正在深度思考中，请稍候...' : '每 5 秒更新一次'} · Build: {buildTimeRef.current}
             </div>
           </div>
           <div className="mt-2">
