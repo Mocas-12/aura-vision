@@ -86,12 +86,12 @@ export default function App() {
         if (result) {
           setRec(result)
         } else {
-          setRec({ name: '网络繁忙', intro: '请稍后重试', facts: '' })
+          setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()}` })
         }
       } catch (e) {
         console.error(e)
         const intro = (e as { message?: string })?.message || String(e)
-        setRec({ name: '识别失败', intro, facts: '' })
+        setRec({ name: '识别失败', intro, facts: `Build Time: ${new Date().toISOString()}` })
       } finally {
         setBusy(false)
       }

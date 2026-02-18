@@ -27,17 +27,14 @@ export async function recognizeNearestCenterObject(opts: {
   prompt?: string
 }): Promise<Recognition | null> {
   const base64 = dataUrlToBase64(opts.imageDataUrl)
-  const finalUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(
-    opts.apiKey,
-  )}`
-  const sysPrompt =
-    '你是一个视觉识别助手。请分析图片，找到距离画面中心最近的单个物体，给出中文：名称(name)、简介(intro)、趣味科普(facts)。只返回一个JSON对象，例如：{"name":"xx","intro":"xx","facts":"xx"}。避免多余内容。'
+  const url =
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' +
+    encodeURIComponent(opts.apiKey)
   const requestBody = {
     contents: [
       {
-        role: 'user',
         parts: [
-          { text: opts.prompt ?? sysPrompt },
+          { text: opts.prompt ?? '识别图中物体' },
           {
             inline_data: {
               mime_type: 'image/jpeg',
@@ -47,14 +44,11 @@ export async function recognizeNearestCenterObject(opts: {
         ],
       },
     ],
-    generationConfig: {
-      temperature: 0.6,
-    },
   }
   try {
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 15000)
-    const res = await fetch(finalUrl, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -69,8 +63,8 @@ export async function recognizeNearestCenterObject(opts: {
       console.error('Gemini API HTTP error', res.status, errText)
       return {
         name: '识别失败',
-        intro: `${res.status} ${res.statusText || ''} | ${maskKeyInUrl(finalUrl)}`.trim(),
-        facts: errText.slice(0, 400),
+        intro: `${res.status} ${res.statusText || ''} | ${maskKeyInUrl(url)}`.trim(),
+        facts: `${errText.slice(0, 400)}\nBuild Time: ${new Date().toISOString()}`,
       }
     }
     const json: unknown = await res.json()
@@ -109,8 +103,8 @@ export async function recognizeNearestCenterObject(opts: {
     const intro = (e as { message?: string })?.message || String(e)
     return {
       name: '识别失败',
-      intro: `${intro} | ${maskKeyInUrl(finalUrl)}`,
-      facts: '',
+      intro: `${intro} | ${maskKeyInUrl(url)}`,
+      facts: `Build Time: ${new Date().toISOString()}`,
     }
   }
   return null
