@@ -10,14 +10,26 @@ function dataUrlToBase64(dataUrl: string): string {
   return (raw ?? '').replace(/\s+/g, '')
 }
 
+function maskKeyInUrl(url: string): string {
+  const m = url.match(/([?&]key=)([^&]+)/)
+  if (!m) return url
+  const key = m[2]
+  const len = key.length
+  const head = key.slice(0, Math.min(6, len))
+  const tail = key.slice(Math.max(0, len - 4))
+  const masked = `${head}${'*'.repeat(Math.max(0, len - head.length - tail.length))}${tail}`
+  return url.replace(key, masked)
+}
+
 export async function recognizeNearestCenterObject(opts: {
   apiKey: string
   imageDataUrl: string
   prompt?: string
 }): Promise<Recognition | null> {
   const base64 = dataUrlToBase64(opts.imageDataUrl)
-  const primaryUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent'
-  const fallbackUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
+  const finalUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(
+    opts.apiKey,
+  )}`
   const sysPrompt =
     '你是一个视觉识别助手。请分析图片，找到距离画面中心最近的单个物体，给出中文：名称(name)、简介(intro)、趣味科普(facts)。只返回一个JSON对象，例如：{"name":"xx","intro":"xx","facts":"xx"}。避免多余内容。'
   const requestBody = {
@@ -42,25 +54,22 @@ export async function recognizeNearestCenterObject(opts: {
   try {
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 15000)
-    const options = {
+    const res = await fetch(finalUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,
-    } as RequestInit
-    let res = await fetch(`${primaryUrl}?key=${encodeURIComponent(opts.apiKey)}`, options)
-    if (res.status === 404) {
-      res = await fetch(`${fallbackUrl}?key=${encodeURIComponent(opts.apiKey)}`, options)
-    }
+    })
     window.clearTimeout(timeout)
     if (!res.ok) {
       const errText = await res.text()
       console.error('Gemini API HTTP error', res.status, errText)
       return {
         name: '识别失败',
-        intro: `${res.status} ${res.statusText || ''}`.trim(),
+        intro: `${res.status} ${res.statusText || ''} | ${maskKeyInUrl(finalUrl)}`.trim(),
         facts: errText.slice(0, 400),
       }
     }
@@ -100,7 +109,7 @@ export async function recognizeNearestCenterObject(opts: {
     const intro = (e as { message?: string })?.message || String(e)
     return {
       name: '识别失败',
-      intro,
+      intro: `${intro} | ${maskKeyInUrl(finalUrl)}`,
       facts: '',
     }
   }
