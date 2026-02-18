@@ -23,12 +23,25 @@ export async function recognizeNearestCenterObject(opts: {
     messages: [
       {
         role: 'system',
-        content: [{ type: 'text', text: '你是一个专业的视觉助手。请始终使用简体中文回答，严禁使用英文。' }],
+        content: [
+          {
+            type: 'text',
+            text:
+              '你是一个专业的视觉助手。请始终使用简体中文回答，严禁使用英文。' +
+              '无论图中文字是什么语言（英文、日文等），请务必将其翻译并总结为简体中文，严禁直接复读图片中的原始外语内容。' +
+              '输出字数严禁超过30字，且必须是纯中文。',
+          },
+        ],
       },
       {
         role: 'user',
         content: [
-          { type: 'text', text: '识别图中物体，并直接给出中文描述，严禁输出英文。' },
+          {
+            type: 'text',
+            text:
+              '用中文总结图中物体的关键信息或说明文大意。如果图中是日文或英文，请直接给出中文翻译结果。' +
+              '输出字数严禁超过30字，且必须是纯中文。',
+          },
           { type: 'image_url', image_url: { url: opts.imageDataUrl } },
         ],
       },
