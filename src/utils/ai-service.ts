@@ -18,20 +18,18 @@ export async function recognizeNearestCenterObject(opts: {
 }): Promise<Recognition | null> {
   const url = 'https://integrate.api.nvidia.com/v1/chat/completions'
   const requestBody = {
-    model: 'moonshotai/kimi-k2.5',
+    model: 'meta/llama-3.2-11b-vision-instruct',
     messages: [
       {
         role: 'user',
         content: [
-          { type: 'text', text: opts.prompt ?? '识别图中物体并简要介绍' },
+          { type: 'text', text: opts.prompt ?? 'Identify this object. Answer in Chinese, one sentence only.' },
           { type: 'image_url', image_url: { url: opts.imageDataUrl } },
         ],
       },
     ],
   }
   try {
-    const controller = new AbortController()
-    const timeout = window.setTimeout(() => controller.abort(), 30000)
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -40,9 +38,7 @@ export async function recognizeNearestCenterObject(opts: {
         Accept: 'application/json',
       },
       body: JSON.stringify(requestBody),
-      signal: controller.signal,
     })
-    window.clearTimeout(timeout)
     if (!res.ok) {
       const errText = await res.text()
       console.error('NVIDIA API HTTP error', res.status, errText)
