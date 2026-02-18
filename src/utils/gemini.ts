@@ -16,7 +16,8 @@ export async function recognizeNearestCenterObject(opts: {
   prompt?: string
 }): Promise<Recognition | null> {
   const base64 = dataUrlToBase64(opts.imageDataUrl)
-  const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
+  const primaryUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent'
+  const fallbackUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
   const sysPrompt =
     '你是一个视觉识别助手。请分析图片，找到距离画面中心最近的单个物体，给出中文：名称(name)、简介(intro)、趣味科普(facts)。只返回一个JSON对象，例如：{"name":"xx","intro":"xx","facts":"xx"}。避免多余内容。'
   const requestBody = {
@@ -41,14 +42,18 @@ export async function recognizeNearestCenterObject(opts: {
   try {
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 15000)
-    const res = await fetch(`${url}?key=${encodeURIComponent(opts.apiKey)}`, {
+    const options = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,
-    })
+    } as RequestInit
+    let res = await fetch(`${primaryUrl}?key=${encodeURIComponent(opts.apiKey)}`, options)
+    if (res.status === 404) {
+      res = await fetch(`${fallbackUrl}?key=${encodeURIComponent(opts.apiKey)}`, options)
+    }
     window.clearTimeout(timeout)
     if (!res.ok) {
       const errText = await res.text()
