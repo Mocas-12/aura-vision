@@ -13,6 +13,7 @@ export default function App() {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const lastSigRef = useRef<string>('')
   const buildTimeRef = useRef<string>(new Date().toISOString())
+  const [proc, setProc] = useState<string>('idle')
 
   const typedName = useTypewriter(rec?.name ?? '', 15)
   const typedIntro = useTypewriter(rec?.intro ?? '', 10)
@@ -95,13 +96,28 @@ export default function App() {
       octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
       const dataUrl = out.toDataURL('image/jpeg', 0.6)
       setBusy(true)
+      setProc('fetching')
       try {
-        const result = await recognizeNearestCenterObject({
-          apiKey,
-          imageDataUrl: dataUrl,
-        })
+        const timeoutTag = Symbol('timeout')
+        const resultOrTimeout = await Promise.race([
+          recognizeNearestCenterObject({
+            apiKey,
+            imageDataUrl: dataUrl,
+          }),
+          new Promise<Recognition | symbol>((resolve) =>
+            setTimeout(() => resolve(timeoutTag), 10000),
+          ),
+        ])
+        if (resultOrTimeout === timeoutTag) {
+          console.warn('Processing Status: timeout')
+          setProc('timeout')
+          setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()}` })
+          return
+        }
+        const result = resultOrTimeout as Recognition | null
         if (result) {
           setRec(result)
+          setProc('done')
           if (result.name !== '识别失败') {
             const sig = `${result.name}|${result.intro}`
             if (sig !== lastSigRef.current) {
@@ -124,11 +140,14 @@ export default function App() {
           }
         } else {
           setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()}` })
+          setProc('empty')
         }
       } catch (e) {
+        console.error('Processing Status: error', e)
         const name = (e as { name?: string })?.name
         const intro = (e as { message?: string })?.message || String(e)
         setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()}` })
+        setProc('error')
       } finally {
         setBusy(false)
       }
@@ -169,7 +188,7 @@ export default function App() {
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-white/60">
-              {busy ? 'AI 正在深度思考中，请稍候...' : '每 5 秒更新一次'} · Build: {buildTimeRef.current}
+              {busy ? 'AI 正在深度思考中，请稍候...' : '每 5 秒更新一次'} · Build: {buildTimeRef.current} · {proc}
             </div>
           </div>
           <div className="mt-2">

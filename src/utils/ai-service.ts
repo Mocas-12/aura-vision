@@ -77,20 +77,26 @@ export async function recognizeNearestCenterObject(opts: {
     }
     const json: unknown = await res.json()
     const choices = (json as { choices?: Array<{ message?: { content?: unknown } }> }).choices ?? []
-    const contentAny = choices[0]?.message?.content
+    const contentAny = choices?.[0]?.message?.content
     let text = ''
     if (typeof contentAny === 'string') {
       text = contentAny
     } else if (Array.isArray(contentAny)) {
       text = (contentAny as Array<{ type?: string; text?: string }>).map((p) => p?.text ?? '').filter(Boolean).join('\n')
+    } else {
+      text = ''
     }
-    if (text) {
-      const englishCount = (text.match(/[a-zA-Z]/g) || []).length
-      if (englishCount > text.length * 0.5) {
-        text = '检测到纯英文内容，正在为您总结中文大意：' + text.slice(0, 10) + '... (请再次尝试或靠近拍摄)'
+    if (!text) {
+      throw new Error('AI 返回内容为空')
+    }
+    {
+      const onlyEnglish = text.replace(/[^a-zA-Z]/g, '')
+      const englishChars = onlyEnglish.length
+      const total = text.length
+      if (total > 0 && englishChars / total > 0.5) {
+        text = '【自动翻译总结】：' + text.slice(0, 30) + '...'
       }
     }
-    if (!text) return null
     try {
       const parsed = JSON.parse(text) as { name?: unknown; intro?: unknown; facts?: unknown } | null
       if (parsed && typeof parsed === 'object') {
