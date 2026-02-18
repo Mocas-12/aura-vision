@@ -1,0 +1,143 @@
+import { useEffect, useRef, useState } from 'react'
+import SettingsModal from './components/SettingsModal'
+import { hasEncryptedKey } from './utils/crypto'
+import { recognizeNearestCenterObject, type Recognition } from './utils/gemini'
+import { useTypewriter } from './hooks/useTypewriter'
+
+export default function App() {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [cameraReady, setCameraReady] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(!hasEncryptedKey())
+  const [apiKey, setApiKey] = useState<string | null>(null)
+  const [rec, setRec] = useState<Recognition | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const typedName = useTypewriter(rec?.name ?? '', 15)
+  const typedIntro = useTypewriter(rec?.intro ?? '', 10)
+  const typedFacts = useTypewriter(rec?.facts ?? '', 10)
+
+  useEffect(() => {
+    const initialVideo = videoRef.current
+    async function start() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false,
+        })
+        const v = videoRef.current
+        if (!v) return
+        v.srcObject = stream
+        await v.play()
+        setCameraReady(true)
+      } catch (e: unknown) {
+        const name = (e as { name?: string })?.name
+        const message =
+          name === 'NotAllowedError'
+            ? '摄像头访问被拒绝，请在浏览器设置中允许相机权限。'
+            : '无法访问摄像头，请检查设备或权限。'
+        setCameraError(message)
+      }
+    }
+    start()
+    return () => {
+      const stream = initialVideo?.srcObject as MediaStream | null
+      stream?.getTracks()?.forEach((t) => t.stop())
+    }
+  }, [])
+
+  useEffect(() => {
+    const interval = window.setInterval(async () => {
+      if (!cameraReady || !apiKey || busy) return
+      const v = videoRef.current
+      const c = canvasRef.current
+      if (!v || !c) return
+      c.width = v.videoWidth
+      c.height = v.videoHeight
+      const ctx = c.getContext('2d')
+      if (!ctx) return
+      ctx.drawImage(v, 0, 0, c.width, c.height)
+      const side = Math.floor(Math.min(c.width, c.height) * 0.6)
+      const cx = Math.floor(c.width / 2)
+      const cy = Math.floor(c.height / 2)
+      const sx = cx - Math.floor(side / 2)
+      const sy = cy - Math.floor(side / 2)
+      const crop = document.createElement('canvas')
+      crop.width = side
+      crop.height = side
+      const cctx = crop.getContext('2d')
+      cctx?.drawImage(c, sx, sy, side, side, 0, 0, side, side)
+      const dataUrl = crop.toDataURL('image/jpeg', 0.85)
+      setBusy(true)
+      const result = await recognizeNearestCenterObject({
+        apiKey,
+        imageDataUrl: dataUrl,
+      })
+      if (result) {
+        setRec(result)
+      }
+      setBusy(false)
+    }, 5000)
+    return () => window.clearInterval(interval)
+  }, [cameraReady, apiKey, busy])
+
+  return (
+    <div className="w-full h-full relative">
+      <video
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full object-cover"
+        playsInline
+        muted
+      />
+      <canvas ref={canvasRef} className="hidden" />
+
+      <div className="scan-frame bg-white/10" />
+
+      <div className="absolute top-4 right-4 z-30">
+        <button
+          className="rounded-md bg-white/10 hover:bg-white/20 px-3 py-2"
+          onClick={() => setSettingsOpen(true)}
+        >
+          设置
+        </button>
+      </div>
+
+      {cameraError && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center">
+          <div className="glass max-w-[560px] w-[92%] rounded-2xl p-6">
+            <h3 className="text-lg font-semibold">摄像头错误</h3>
+            <p className="mt-2 text-sm text-white/80">{cameraError}</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20"
+                onClick={() => window.location.reload()}
+              >
+                重试
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="absolute bottom-0 left-0 right-0 z-20 p-4 pb-6">
+        <div className="glass rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-white/60">{busy ? '识别中…' : '每 5 秒更新一次'}</div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>
+            <div className="mt-2 text-sm leading-relaxed text-white/80">{typedIntro}</div>
+          <div className="mt-3 text-sm leading-relaxed text-white/80">{typedFacts}</div>
+          </div>
+        </div>
+      </div>
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onUnlocked={(key) => setApiKey(key)}
+      />
+    </div>
+  )
+}
