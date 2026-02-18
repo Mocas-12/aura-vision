@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import SettingsModal from './components/SettingsModal'
-import { hasEncryptedKey } from './utils/crypto'
 import { recognizeNearestCenterObject, type Recognition } from './utils/gemini'
 import { useTypewriter } from './hooks/useTypewriter'
 
@@ -9,8 +7,7 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(!hasEncryptedKey())
-  const [apiKey, setApiKey] = useState<string | null>(null)
+  const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ?? null
   const [rec, setRec] = useState<Recognition | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -49,14 +46,25 @@ export default function App() {
 
   useEffect(() => {
     const interval = window.setInterval(async () => {
-      if (!cameraReady || !apiKey || busy) return
+      if (!cameraReady) return
+      if (!apiKey) {
+        setRec({ name: '未配置 API Key', intro: '请在环境变量中设置 VITE_GEMINI_API_KEY', facts: '' })
+        return
+      }
+      if (busy) return
       const v = videoRef.current
       const c = canvasRef.current
-      if (!v || !c) return
+      if (!v || !c) {
+        setRec({ name: '未获取到画面', intro: '请检查摄像头权限或设备', facts: '' })
+        return
+      }
       c.width = v.videoWidth
       c.height = v.videoHeight
       const ctx = c.getContext('2d')
-      if (!ctx) return
+      if (!ctx) {
+        setRec({ name: '未获取到画面', intro: '渲染上下文不可用', facts: '' })
+        return
+      }
       ctx.drawImage(v, 0, 0, c.width, c.height)
       const side = Math.floor(Math.min(c.width, c.height) * 0.6)
       const cx = Math.floor(c.width / 2)
@@ -68,16 +76,24 @@ export default function App() {
       crop.height = side
       const cctx = crop.getContext('2d')
       cctx?.drawImage(c, sx, sy, side, side, 0, 0, side, side)
-      const dataUrl = crop.toDataURL('image/jpeg', 0.85)
+      const dataUrl = crop.toDataURL('image/jpeg', 0.7)
       setBusy(true)
-      const result = await recognizeNearestCenterObject({
-        apiKey,
-        imageDataUrl: dataUrl,
-      })
-      if (result) {
-        setRec(result)
+      try {
+        const result = await recognizeNearestCenterObject({
+          apiKey,
+          imageDataUrl: dataUrl,
+        })
+        if (result) {
+          setRec(result)
+        } else {
+          setRec({ name: '网络繁忙', intro: '请稍后重试', facts: '' })
+        }
+      } catch (e) {
+        console.error(e)
+        setRec({ name: '网络繁忙', intro: '请稍后重试', facts: '' })
+      } finally {
+        setBusy(false)
       }
-      setBusy(false)
     }, 5000)
     return () => window.clearInterval(interval)
   }, [cameraReady, apiKey, busy])
@@ -93,15 +109,6 @@ export default function App() {
       <canvas ref={canvasRef} className="hidden" />
 
       <div className="scan-frame bg-white/10" />
-
-      <div className="absolute top-4 right-4 z-30">
-        <button
-          className="rounded-md bg-white/10 hover:bg-white/20 px-3 py-2"
-          onClick={() => setSettingsOpen(true)}
-        >
-          设置
-        </button>
-      </div>
 
       {cameraError && (
         <div className="absolute inset-0 z-40 flex items-center justify-center">
@@ -128,16 +135,10 @@ export default function App() {
           <div className="mt-2">
             <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>
             <div className="mt-2 text-sm leading-relaxed text-white/80">{typedIntro}</div>
-          <div className="mt-3 text-sm leading-relaxed text-white/80">{typedFacts}</div>
+            <div className="mt-3 text-sm leading-relaxed text-white/80">{typedFacts}</div>
           </div>
         </div>
       </div>
-
-      <SettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onUnlocked={(key) => setApiKey(key)}
-      />
     </div>
   )
 }

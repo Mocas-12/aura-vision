@@ -45,6 +45,8 @@ export async function recognizeNearestCenterObject(opts: {
       body: JSON.stringify(requestBody),
     })
     if (!res.ok) {
+      const errText = await res.text()
+      console.error('Gemini API HTTP error', res.status, errText)
       return null
     }
     const json: unknown = await res.json()
@@ -78,7 +80,8 @@ export async function recognizeNearestCenterObject(opts: {
         }
       }
     }
-  } catch {
+  } catch (e) {
+    console.error('Gemini API network error', e)
     return null
   }
   return null
