@@ -23,7 +23,7 @@ export async function recognizeNearestCenterObject(opts: {
       {
         role: 'user',
         content: [
-          { type: 'text', text: opts.prompt ?? 'Identify this object. Answer in Chinese, one sentence only.' },
+          { type: 'text', text: opts.prompt ?? '请用中文简短描述图中物体，不超过20个字。' },
           { type: 'image_url', image_url: { url: opts.imageDataUrl } },
         ],
       },

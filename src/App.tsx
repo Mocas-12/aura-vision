@@ -10,6 +10,8 @@ export default function App() {
   const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ?? null
   const [rec, setRec] = useState<Recognition | null>(null)
   const [busy, setBusy] = useState(false)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const lastSigRef = useRef<string>('')
 
   const typedName = useTypewriter(rec?.name ?? '', 15)
   const typedIntro = useTypewriter(rec?.intro ?? '', 10)
@@ -28,6 +30,14 @@ export default function App() {
         v.srcObject = stream
         await v.play()
         setCameraReady(true)
+        if (!audioCtxRef.current) {
+          const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }
+          const AC = w.AudioContext ?? w.webkitAudioContext
+          if (AC) {
+            audioCtxRef.current = new AC()
+            audioCtxRef.current.resume().catch(() => {})
+          }
+        }
       } catch (e: unknown) {
         const name = (e as { name?: string })?.name
         const message =
@@ -91,6 +101,26 @@ export default function App() {
         })
         if (result) {
           setRec(result)
+          if (result.name !== '识别失败') {
+            const sig = `${result.name}|${result.intro}`
+            if (sig !== lastSigRef.current) {
+              const ctx = audioCtxRef.current
+              if (ctx) {
+                const o = ctx.createOscillator()
+                const g = ctx.createGain()
+                o.type = 'sine'
+                o.frequency.setValueAtTime(880, ctx.currentTime)
+                g.gain.setValueAtTime(0, ctx.currentTime)
+                g.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01)
+                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25)
+                o.connect(g)
+                g.connect(ctx.destination)
+                o.start()
+                o.stop(ctx.currentTime + 0.25)
+              }
+              lastSigRef.current = sig
+            }
+          }
         } else {
           setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()}` })
         }
@@ -146,7 +176,9 @@ export default function App() {
             <div className="mt-2 text-sm leading-relaxed text-white/80">
               {busy ? 'AI 正在深度思考中，请稍候...' : typedIntro}
             </div>
-            <div className="mt-3 text-sm leading-relaxed text-white/80">{typedFacts}</div>
+            {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
+              <div className="mt-3 text-sm leading-relaxed text-white/80">{typedFacts}</div>
+            )}
           </div>
         </div>
       </div>
