@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { recognizeNearestCenterObject, type Recognition } from './utils/gemini'
+import { recognizeNearestCenterObject, type Recognition } from './utils/ai-service'
 import { useTypewriter } from './hooks/useTypewriter'
 
 export default function App() {
