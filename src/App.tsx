@@ -90,7 +90,8 @@ export default function App() {
         }
       } catch (e) {
         console.error(e)
-        setRec({ name: '网络繁忙', intro: '请稍后重试', facts: '' })
+        const intro = (e as { message?: string })?.message || String(e)
+        setRec({ name: '识别失败', intro, facts: '' })
       } finally {
         setBusy(false)
       }

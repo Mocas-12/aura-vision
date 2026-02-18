@@ -5,7 +5,9 @@ export type Recognition = {
 }
 
 function dataUrlToBase64(dataUrl: string): string {
-  return dataUrl.split(',')[1] ?? ''
+  const parts = dataUrl.split(',')
+  const raw = parts.length > 1 ? parts[1] : parts[0]
+  return (raw ?? '').replace(/\s+/g, '')
 }
 
 export async function recognizeNearestCenterObject(opts: {
@@ -37,17 +39,25 @@ export async function recognizeNearestCenterObject(opts: {
     },
   }
   try {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 15000)
     const res = await fetch(`${url}?key=${encodeURIComponent(opts.apiKey)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
     })
+    window.clearTimeout(timeout)
     if (!res.ok) {
       const errText = await res.text()
       console.error('Gemini API HTTP error', res.status, errText)
-      return null
+      return {
+        name: '识别失败',
+        intro: `${res.status} ${res.statusText || ''}`.trim(),
+        facts: errText.slice(0, 400),
+      }
     }
     const json: unknown = await res.json()
     const candidates = (json as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates ?? []
@@ -82,7 +92,12 @@ export async function recognizeNearestCenterObject(opts: {
     }
   } catch (e) {
     console.error('Gemini API network error', e)
-    return null
+    const intro = (e as { message?: string })?.message || String(e)
+    return {
+      name: '识别失败',
+      intro,
+      facts: '',
+    }
   }
   return null
 }
