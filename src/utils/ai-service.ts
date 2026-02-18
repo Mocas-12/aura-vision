@@ -31,7 +31,7 @@ export async function recognizeNearestCenterObject(opts: {
   }
   try {
     const controller = new AbortController()
-    const timeout = window.setTimeout(() => controller.abort(), 15000)
+    const timeout = window.setTimeout(() => controller.abort(), 30000)
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -79,10 +79,11 @@ export async function recognizeNearestCenterObject(opts: {
     }
   } catch (e) {
     console.error('NVIDIA API network error', e)
+    const name = (e as { name?: string })?.name
     const intro = (e as { message?: string })?.message || String(e)
     return {
       name: '识别失败',
-      intro: `${intro} | ${url} | ${maskBearer(opts.apiKey)}`,
+      intro: `${name ? name + ': ' : ''}${intro} | ${url} | ${maskBearer(opts.apiKey)}`,
       facts: `Build Time: ${new Date().toISOString()}`,
     }
   }

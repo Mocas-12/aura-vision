@@ -76,7 +76,13 @@ export default function App() {
       crop.height = side
       const cctx = crop.getContext('2d')
       cctx?.drawImage(c, sx, sy, side, side, 0, 0, side, side)
-      const dataUrl = crop.toDataURL('image/jpeg', 0.7)
+      const targetSize = Math.min(side, 800)
+      const out = document.createElement('canvas')
+      out.width = targetSize
+      out.height = targetSize
+      const octx = out.getContext('2d')
+      octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
+      const dataUrl = out.toDataURL('image/jpeg', 0.6)
       setBusy(true)
       try {
         const result = await recognizeNearestCenterObject({
@@ -89,9 +95,9 @@ export default function App() {
           setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()}` })
         }
       } catch (e) {
-        console.error(e)
+        const name = (e as { name?: string })?.name
         const intro = (e as { message?: string })?.message || String(e)
-        setRec({ name: '识别失败', intro, facts: `Build Time: ${new Date().toISOString()}` })
+        setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()}` })
       } finally {
         setBusy(false)
       }
@@ -131,11 +137,15 @@ export default function App() {
       <div className="absolute bottom-0 left-0 right-0 z-20 p-4 pb-6">
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-white/60">{busy ? '识别中…' : '每 5 秒更新一次'}</div>
+            <div className="text-sm text-white/60">
+              {busy ? 'AI 正在深度思考中，请稍候...' : '每 5 秒更新一次'}
+            </div>
           </div>
           <div className="mt-2">
             <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>
-            <div className="mt-2 text-sm leading-relaxed text-white/80">{typedIntro}</div>
+            <div className="mt-2 text-sm leading-relaxed text-white/80">
+              {busy ? 'AI 正在深度思考中，请稍候...' : typedIntro}
+            </div>
             <div className="mt-3 text-sm leading-relaxed text-white/80">{typedFacts}</div>
           </div>
         </div>
