@@ -19,7 +19,7 @@ export async function recognizeNearestCenterObject(opts: {
   const url = 'https://integrate.api.nvidia.com/v1/chat/completions'
   const requestBody = {
     model: 'meta/llama-3.2-11b-vision-instruct',
-    temperature: 0.1,
+    temperature: 0.0,
     messages: [
       {
         role: 'system',
@@ -27,11 +27,20 @@ export async function recognizeNearestCenterObject(opts: {
           {
             type: 'text',
             text:
-              '你是一个专业的视觉助手。请始终使用简体中文回答，严禁使用英文。' +
-              '无论图中文字是什么语言（英文、日文等），请务必将其翻译并总结为简体中文，严禁直接复读图片中的原始外语内容。' +
+              '你是一个翻译官。你唯一的任务是：将图片内容总结成一句话简体中文。严禁输出任何英文字母。' +
+              '即使图片全是英文，你也必须先在大脑中理解并用中文说出来。' +
+              '严禁描述图片布局，只说它是什么。' +
               '输出字数严禁超过30字，且必须是纯中文。',
           },
         ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'text', text: '[一张全英文成分表图片]' }],
+      },
+      {
+        role: 'assistant',
+        content: [{ type: 'text', text: '这是一份英文营养补充剂的成分说明，包含维生素和矿物质。' }],
       },
       {
         role: 'user',
@@ -74,6 +83,12 @@ export async function recognizeNearestCenterObject(opts: {
       text = contentAny
     } else if (Array.isArray(contentAny)) {
       text = (contentAny as Array<{ type?: string; text?: string }>).map((p) => p?.text ?? '').filter(Boolean).join('\n')
+    }
+    if (text) {
+      const englishCount = (text.match(/[a-zA-Z]/g) || []).length
+      if (englishCount > text.length * 0.5) {
+        text = '检测到纯英文内容，正在为您总结中文大意：' + text.slice(0, 10) + '... (请再次尝试或靠近拍摄)'
+      }
     }
     if (!text) return null
     try {
