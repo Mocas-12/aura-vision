@@ -63,7 +63,7 @@ module.exports = function(req, res) {
     }
 
     var promptText = 'What is this? Answer in one Chinese word.'
-    var defaultModel = 'moonshotai/kimi-k2-5'
+    var defaultModel = 'moonshotai/kimi-v1.5'
     var model = defaultModel
     var baseURL = 'https://integrate.api.nvidia.com/v1'
     var requestUrl = baseURL + '/chat/completions'
