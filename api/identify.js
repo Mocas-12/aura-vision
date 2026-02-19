@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
-      res.status(200).send('API is alive')
+      res.status(200).send('API is Ready')
       return
     }
     if (req.method === 'OPTIONS') {
