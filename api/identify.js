@@ -62,7 +62,7 @@ module.exports = function(req, res) {
       return
     }
 
-    var promptText = 'Describe this image in one Chinese word.'
+    var promptText = '你是一个专业的视觉分析专家。请识别图中的物品，并按以下格式用中文回复：\n\n【名称】：（如果是日文/英文，请翻译成中文名称）\n\n【介绍】：（简述该物品的用途、主要特点。如果包装上有日语或英语说明，请提取核心信息并转化为中文介绍）\n要求：语言专业且亲切，介绍字数控制在 80 字以内。\n特别注意包装上的细小文字，优先识别品牌名和商品类别。'
     var defaultModel = 'meta/llama-3.2-11b-vision-instruct'
     var model = defaultModel
     var baseURL = 'https://integrate.api.nvidia.com/v1'

@@ -260,11 +260,11 @@ export default function App() {
           )}
           <div className="mt-2">
             <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>
-            <div className="mt-2 text-sm leading-relaxed text-white/80">
+          <div className="mt-2 text-sm leading-relaxed text-white/80 whitespace-pre-wrap max-h-40 overflow-y-auto">
               {busy ? 'AI 正在深度思考中，请稍候...' : typedIntro}
             </div>
-            {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
-              <div className="mt-3 text-sm leading-relaxed text-white/80">{typedFacts}</div>
+          {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
+              <div className="mt-3 text-sm leading-relaxed text-white/80 whitespace-pre-wrap max-h-32 overflow-y-auto">{typedFacts}</div>
             )}
           </div>
         </div>
