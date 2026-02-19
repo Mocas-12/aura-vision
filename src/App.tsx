@@ -17,6 +17,8 @@ export default function App() {
   const isProcessingRef = useRef<boolean>(false)
   const abortRef = useRef<AbortController | null>(null)
   const [apiWarn, setApiWarn] = useState<string | null>(null)
+  const [viewCount, setViewCount] = useState<number>(0)
+  const [visitorCount, setVisitorCount] = useState<number>(1)
 
   const typedName = useTypewriter(rec?.name ?? '', 15)
   const typedIntro = useTypewriter(rec?.intro ?? '', 10)
@@ -57,6 +59,20 @@ export default function App() {
       const stream = initialVideo?.srcObject as MediaStream | null
       stream?.getTracks()?.forEach((t) => t.stop())
     }
+  }, [])
+
+  useEffect(() => {
+    const k1 = 'aura-vision-views'
+    const v = Number(localStorage.getItem(k1) || '0') + 1
+    localStorage.setItem(k1, String(v))
+    setViewCount(v)
+    const k2 = 'aura-vision-visitor-id'
+    let id = localStorage.getItem(k2)
+    if (!id) {
+      id = Math.random().toString(36).slice(2)
+      localStorage.setItem(k2, id)
+    }
+    setVisitorCount(1)
   }, [])
 
   useEffect(() => {
@@ -193,7 +209,7 @@ export default function App() {
   }, [cameraReady, apiKey, busy])
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative pb-20">
       <video
         ref={videoRef}
         className="absolute inset-0 w-full h-full object-cover"
@@ -221,7 +237,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 z-20 p-4 pb-6">
+      <div className="absolute left-0 right-0 bottom-16 z-20 p-4 pb-6">
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-white/60">
@@ -266,6 +282,15 @@ export default function App() {
           {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
               <div className="mt-3 text-sm leading-relaxed text-white/80 whitespace-pre-wrap max-h-32 overflow-y-auto">{typedFacts}</div>
             )}
+          </div>
+        </div>
+      </div>
+      <div className="fixed bottom-0 left-0 right-0 z-10">
+        <div className="glass mx-auto w-[92%] max-w-[640px] rounded-t-2xl px-4 py-3 text-center">
+          <div className="text-sm text白色/80">👁️ 浏览量: {viewCount} | 👤 访客数: {visitorCount}</div>
+          <div className="mt-1 text-sm text白色/70">
+            作者：United Box | 邮箱：
+            <a href="mailto:a18577y@gmail.com" className="underline text白色/80">a18577y@gmail.com</a>
           </div>
         </div>
       </div>
