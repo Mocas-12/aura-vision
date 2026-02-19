@@ -69,12 +69,13 @@ module.exports = function(req, res) {
 
     var payload = {
       model: model,
+      max_tokens: 512,
       temperature: 0.2,
       messages: [
         {
           role: 'system',
           content: [
-            { type: 'text', text: 'You are a helpful assistant.' }
+            { type: 'text', text: 'You are a helpful assistant. The image is a clear shot of a beverage. Ignore the background.' }
           ]
         },
         {
@@ -87,58 +88,107 @@ module.exports = function(req, res) {
       ]
     }
 
-    var options = {
-      hostname: 'integrate.api.nvidia.com',
-      port: 443,
-      path: '/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
+    function makeOptions() {
+      return {
+        hostname: 'integrate.api.nvidia.com',
+        port: 443,
+        path: '/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        }
       }
     }
 
-    var nreq = https.request(options, function(nres) {
-      var buf = ''
-      nres.on('data', function(d) { buf += d })
-      nres.on('end', function() {
-        var parsed
-        try { parsed = JSON.parse(buf) } catch (e) { parsed = { raw: buf } }
-        var text = null
-        var empty = true
-        try {
-          if (parsed && parsed.choices && parsed.choices.length > 0) {
-            for (var i = 0; i < parsed.choices.length; i++) {
-              var c = parsed.choices[i]
-              var candidate = null
-              if (c && c.message && c.message.content) candidate = c.message.content
-              else if (c && c.delta && c.delta.content) candidate = c.delta.content
-              if (candidate) { text = candidate; break }
-            }
-            empty = !text
+    function extractContent(parsed) {
+      var text = null
+      try {
+        if (parsed && parsed.choices && parsed.choices.length > 0) {
+          for (var i = 0; i < parsed.choices.length; i++) {
+            var c = parsed.choices[i]
+            var candidate = null
+            if (c && c.message && c.message.content) candidate = c.message.content
+            else if (c && c.delta && c.delta.content) candidate = c.delta.content
+            if (candidate) { text = candidate; break }
           }
-        } catch (e) {
-          empty = true
         }
-        res.statusCode = nres.statusCode || 200
+      } catch (e) {}
+      return text
+    }
+
+    function sendOnce(currModel, done) {
+      var localPayload = JSON.parse(JSON.stringify(payload))
+      localPayload.model = currModel
+      var opts = makeOptions()
+      var buf = ''
+      var nreq = https.request(opts, function(nres) {
+        nres.on('data', function(d) { buf += d })
+        nres.on('end', function() {
+          var parsed
+          try { parsed = JSON.parse(buf) } catch (e) { parsed = { raw: buf } }
+          var text = extractContent(parsed)
+          var status = nres.statusCode || 200
+          done(null, { status: status, content: text, parsed: parsed })
+        })
+      })
+      nreq.on('error', function(err) {
+        done(err)
+      })
+      nreq.write(JSON.stringify(localPayload))
+      nreq.end()
+    }
+
+    sendOnce(model, function(err1, r1) {
+      if (err1) {
+        res.statusCode = 502
+        res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        res.end(JSON.stringify({ error: 'NVIDIA request failed', message: String(err1 && err1.message ? err1.message : err1) }))
+        return
+      }
+      var needFallback = (!r1 || !r1.content || r1.status >= 400) && model === allowedModels[0]
+      if (!needFallback) {
+        res.statusCode = r1.status
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
         res.end(JSON.stringify({
-          status: nres.statusCode || 200,
-          empty: empty,
-          content: text,
-          nvidia: parsed
+          status: r1.status,
+          empty: !r1.content,
+          content: r1.content,
+          model_used: model,
+          nvidia: r1.parsed
+        }))
+        return
+      }
+      var fallback = allowedModels[1]
+      sendOnce(fallback, function(err2, r2) {
+        if (err2) {
+          res.statusCode = r1.status
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify({
+            status: r1.status,
+            empty: !r1.content,
+            content: r1.content,
+            model_used: model,
+            fallback_error: String(err2 && err2.message ? err2.message : err2),
+            nvidia: r1.parsed
+          }))
+          return
+        }
+        var finalContent = r2 && r2.content ? r2.content : r1.content
+        var finalStatus = r2 && r2.content ? r2.status : r1.status
+        res.statusCode = finalStatus
+        res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        res.end(JSON.stringify({
+          status: finalStatus,
+          empty: !finalContent,
+          content: finalContent,
+          model_used: r2 && r2.content ? fallback : model,
+          primary_status: r1.status,
+          fallback_status: r2.status,
+          nvidia_primary: r1.parsed,
+          nvidia_fallback: r2.parsed
         }))
       })
     })
-    nreq.on('error', function(err) {
-      res.statusCode = 502
-      res.setHeader('Content-Type', 'application/json; charset=utf-8')
-      res.end(JSON.stringify({
-        error: 'NVIDIA request failed',
-        message: String(err && err.message ? err.message : err)
-      }))
-    })
-    nreq.write(JSON.stringify(payload))
-    nreq.end()
   })
 }
