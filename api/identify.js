@@ -53,11 +53,22 @@ module.exports = function(req, res) {
       res.end(JSON.stringify({ error: 'Missing image base64' }))
       return
     }
+    var approxBytes = Math.floor(base64.length * 3 / 4)
+    var maxBytes = 4.5 * 1024 * 1024
+    if (approxBytes > maxBytes) {
+      res.statusCode = 413
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.end(JSON.stringify({ error: 'Image too large, please compress before upload', approxBytes: approxBytes }))
+      return
+    }
 
     var promptText = 'You are a helpful assistant. Identify the object in this image. If it is a drink like Wheat Tea (麦茶), please tell me its name and key features in Chinese.'
+    var allowedModels = ['meta/llama-3.2-11b-vision-instruct', 'nvidia/llama-3.1-405b-instruct']
+    var model = String((input && input.model) || '').trim()
+    if (allowedModels.indexOf(model) === -1) model = allowedModels[0]
 
     var payload = {
-      model: 'meta/llama-3.2-11b-vision-instruct',
+      model: model,
       temperature: 0.2,
       messages: [
         {
@@ -97,8 +108,13 @@ module.exports = function(req, res) {
         var empty = true
         try {
           if (parsed && parsed.choices && parsed.choices.length > 0) {
-            var msg = parsed.choices[0].message
-            text = msg && msg.content ? msg.content : null
+            for (var i = 0; i < parsed.choices.length; i++) {
+              var c = parsed.choices[i]
+              var candidate = null
+              if (c && c.message && c.message.content) candidate = c.message.content
+              else if (c && c.delta && c.delta.content) candidate = c.delta.content
+              if (candidate) { text = candidate; break }
+            }
             empty = !text
           }
         } catch (e) {
