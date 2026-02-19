@@ -66,7 +66,7 @@ module.exports = function(req, res) {
     var defaultModel = 'nvidia/moonshotai/kimi-v1.5'
     var model = defaultModel
     var baseURL = 'https://integrate.api.nvidia.com/v1'
-    var requestUrl = new URL('chat/completions', baseURL).toString()
+    var requestUrl = baseURL + '/chat/completions'
 
     var payload = {
       model: model,
