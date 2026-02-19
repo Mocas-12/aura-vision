@@ -1,7 +1,8 @@
-module.exports = (req, res) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.status(200).json({
-    message: 'Final Test Success',
-    key: !!process.env.NVIDIA_API_KEY,
-  })
+module.exports = function(req, res) {
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'application/json')
+  res.end(JSON.stringify({
+    message: 'Final Survival Test',
+    key_ok: !!process.env.NVIDIA_API_KEY
+  }))
 }
