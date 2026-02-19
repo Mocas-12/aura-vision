@@ -209,7 +209,7 @@ export default function App() {
   }, [cameraReady, apiKey, busy])
 
   return (
-    <div className="w-full h-full relative pb-20">
+    <div className="w-full min-h-screen relative flex flex-col">
       <video
         ref={videoRef}
         className="absolute inset-0 w-full h-full object-cover"
@@ -285,8 +285,8 @@ export default function App() {
           </div>
         </div>
       </div>
-      <div className="fixed top-0 left-0 right-0 z-50">
-        <div className="glass mx-auto w-[92%] max-w-[640px] rounded-b-2xl px-4 py-3 text-center">
+      <div className="relative z-10 w-full mt-auto pt-5">
+        <div className="glass mx-auto w-[92%] max-w-[640px] rounded-2xl px-4 py-3 text-center">
           <div className="text-sm text白色/80">👁️ 浏览量: {viewCount} | 👤 访客数: {visitorCount}</div>
           <div className="mt-1 text-sm text白色/70">
             作者：Unlimited Box | 邮箱：
