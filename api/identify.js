@@ -63,9 +63,8 @@ module.exports = function(req, res) {
     }
 
     var promptText = 'What is this? Answer in one Chinese word.'
-    var allowedModels = ['meta/llama-3.2-11b-vision-instruct', 'nvidia/llama-3.1-405b-instruct']
-    var model = String((input && input.model) || '').trim()
-    if (allowedModels.indexOf(model) === -1) model = allowedModels[0]
+    var defaultModel = 'moonshotai/kimi-2.5'
+    var model = defaultModel
 
     var payload = {
       model: model,
@@ -141,62 +140,20 @@ module.exports = function(req, res) {
         res.end(JSON.stringify({ error: 'NVIDIA request failed', message: String(err1 && err1.message ? err1.message : err1) }))
         return
       }
-      var needFallback = (!r1 || !r1.content || r1.status >= 400) && model === allowedModels[0]
-      if (!needFallback) {
-        res.statusCode = r1.status
-        res.setHeader('Content-Type', 'application/json; charset=utf-8')
-        var primaryChoice = null
-        try { primaryChoice = r1.parsed && r1.parsed.choices ? r1.parsed.choices[0] : null } catch (e) {}
-        var raw_choice_json = (!r1.content && primaryChoice) ? JSON.stringify(primaryChoice) : null
-        res.end(JSON.stringify({
-          status: r1.status,
-          empty: !r1.content,
-          content: r1.content,
-          model_used: model,
-          nvidia: r1.content ? r1.parsed : primaryChoice,
-          nvidia_primary_choice: primaryChoice,
-          raw_choice_json: raw_choice_json
-        }))
-        return
-      }
-      var fallback = allowedModels[1]
-      sendOnce(fallback, function(err2, r2) {
-        if (err2) {
-          res.statusCode = r1.status
-          res.setHeader('Content-Type', 'application/json; charset=utf-8')
-          res.end(JSON.stringify({
-            status: r1.status,
-            empty: !r1.content,
-            content: r1.content,
-            model_used: model,
-            fallback_error: String(err2 && err2.message ? err2.message : err2),
-            nvidia: r1.parsed
-          }))
-          return
-        }
-        var finalContent = r2 && r2.content ? r2.content : r1.content
-        var finalStatus = r2 && r2.content ? r2.status : r1.status
-        var primaryChoice2 = null
-        var fallbackChoice = null
-        try { primaryChoice2 = r1.parsed && r1.parsed.choices ? r1.parsed.choices[0] : null } catch (e) {}
-        try { fallbackChoice = r2.parsed && r2.parsed.choices ? r2.parsed.choices[0] : null } catch (e) {}
-        var raw_choice_json2 = (!finalContent && (fallbackChoice || primaryChoice2)) ? JSON.stringify(fallbackChoice || primaryChoice2) : null
-        res.statusCode = finalStatus
-        res.setHeader('Content-Type', 'application/json; charset=utf-8')
-        res.end(JSON.stringify({
-          status: finalStatus,
-          empty: !finalContent,
-          content: finalContent,
-          model_used: r2 && r2.content ? fallback : model,
-          primary_status: r1.status,
-          fallback_status: r2.status,
-          nvidia_primary: finalContent ? r1.parsed : primaryChoice2,
-          nvidia_fallback: r2 && r2.content ? r2.parsed : fallbackChoice,
-          nvidia_primary_choice: primaryChoice2,
-          nvidia_fallback_choice: fallbackChoice,
-          raw_choice_json: raw_choice_json2
-        }))
-      })
+      res.statusCode = r1.status
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      var primaryChoice = null
+      try { primaryChoice = r1.parsed && r1.parsed.choices ? r1.parsed.choices[0] : null } catch (e) {}
+      var raw_choice_json = (!r1.content && primaryChoice) ? JSON.stringify(primaryChoice) : null
+      res.end(JSON.stringify({
+        status: r1.status,
+        empty: !r1.content,
+        content: r1.content,
+        model_used: model,
+        nvidia: r1.content ? r1.parsed : primaryChoice,
+        nvidia_primary_choice: primaryChoice,
+        raw_choice_json: raw_choice_json
+      }))
     })
   })
 }
