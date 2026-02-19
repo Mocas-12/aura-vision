@@ -17,53 +17,18 @@ export async function recognizeNearestCenterObject(opts: {
   prompt?: string
   signal?: AbortSignal
 }): Promise<Recognition | null> {
-  const url = 'https://integrate.api.nvidia.com/v1/chat/completions'
+  const url = '/api/identify'
+  const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '')
   const requestBody = {
-    model: 'meta/llama-3.2-11b-vision-instruct',
-    temperature: 0.0,
-    messages: [
-      {
-        role: 'system',
-        content: [
-          {
-            type: 'text',
-            text:
-              '你是一个翻译官。你唯一的任务是：将图片内容总结成一句话简体中文。严禁输出任何英文字母。' +
-              '即使图片全是英文，你也必须先在大脑中理解并用中文说出来。' +
-              '严禁描述图片布局，只说它是什么。' +
-              '输出字数严禁超过30字，且必须是纯中文。',
-          },
-        ],
-      },
-      {
-        role: 'user',
-        content: [{ type: 'text', text: '[一张全英文成分表图片]' }],
-      },
-      {
-        role: 'assistant',
-        content: [{ type: 'text', text: '这是一份英文营养补充剂的成分说明，包含维生素和矿物质。' }],
-      },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text:
-              '用中文总结图中物体的关键信息或说明文大意。如果图中是日文或英文，请直接给出中文翻译结果。' +
-              '输出字数严禁超过30字，且必须是纯中文。',
-          },
-          { type: 'image_url', image_url: { url: opts.imageDataUrl } },
-        ],
-      },
-    ],
+    imageDataUrl: cleanImageUrl,
+    prompt: opts.prompt ?? '请用中文总结图片内容或说明文大意，最多30字。',
   }
   try {
     const res = await fetch(url, {
       method: 'POST',
+      mode: 'cors',
       headers: {
-        Authorization: `Bearer ${opts.apiKey}`,
         'Content-Type': 'application/json',
-        Accept: 'application/json',
       },
       body: JSON.stringify(requestBody),
       signal: opts.signal,
@@ -74,7 +39,7 @@ export async function recognizeNearestCenterObject(opts: {
       return {
         name: '识别失败',
         intro: `${res.status} ${res.statusText || ''} | ${url} | ${maskBearer(opts.apiKey)}`.trim(),
-        facts: `${errText.slice(0, 400)}\nBuild Time: ${new Date().toISOString()}`,
+        facts: `${errText.slice(0, 400)}\nBuild Time: ${new Date().toISOString()} -proxy-try`,
       }
     }
     const json: unknown = await res.json()
@@ -117,11 +82,14 @@ export async function recognizeNearestCenterObject(opts: {
   } catch (e) {
     console.error('NVIDIA API network error', e)
     const name = (e as { name?: string })?.name
-    const intro = (e as { message?: string })?.message || String(e)
+    let intro = (e as { message?: string })?.message || String(e)
+    if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
+      intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
+    }
     return {
       name: '识别失败',
-      intro: `${name ? name + ': ' : ''}${intro} | ${url} | ${maskBearer(opts.apiKey)}`,
-      facts: `Build Time: ${new Date().toISOString()}`,
+      intro: `${name ? name + ': ' : ''}${intro}`,
+      facts: `Build Time: ${new Date().toISOString()} -proxy-try`,
     }
   }
   return null

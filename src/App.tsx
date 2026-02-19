@@ -16,6 +16,7 @@ export default function App() {
   const [proc, setProc] = useState<string>('idle')
   const isProcessingRef = useRef<boolean>(false)
   const abortRef = useRef<AbortController | null>(null)
+  const [apiWarn, setApiWarn] = useState<string | null>(null)
 
   const typedName = useTypewriter(rec?.name ?? '', 15)
   const typedIntro = useTypewriter(rec?.intro ?? '', 10)
@@ -59,6 +60,20 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    let done = false
+    fetch('/api/identify', { method: 'GET' })
+      .then((r) => {
+        if (!done && r.status === 404) {
+          setApiWarn('API 路由未配置')
+        }
+      })
+      .catch(() => {})
+    return () => {
+      done = true
+    }
+  }, [])
+
+  useEffect(() => {
     const interval = window.setInterval(async () => {
       if (!cameraReady) return
       if (!apiKey) {
@@ -97,6 +112,7 @@ export default function App() {
       const octx = out.getContext('2d')
       octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
       let dataUrl: string | null = out.toDataURL('image/jpeg', 0.5)
+      dataUrl = dataUrl?.replace(/\s/g, '') ?? null
       setBusy(true)
       setProc('fetching')
       isProcessingRef.current = true
@@ -124,7 +140,7 @@ export default function App() {
         if (resultOrTimeout === timeoutTag) {
           console.warn('Processing Status: timeout')
           setProc('timeout')
-          setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()}` })
+          setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
           setBusy(false)
           isProcessingRef.current = false
           abortRef.current?.abort()
@@ -157,14 +173,17 @@ export default function App() {
             }
           }
         } else {
-          setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()}` })
+          setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
           setProc('empty')
         }
       } catch (e) {
         console.error('Processing Status: error', e)
         const name = (e as { name?: string })?.name
-        const intro = (e as { message?: string })?.message || String(e)
-        setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()}` })
+        let intro = (e as { message?: string })?.message || String(e)
+        if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
+          intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
+        }
+        setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
         setProc('error')
       } finally {
         setBusy(false)
@@ -209,9 +228,39 @@ export default function App() {
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-white/60">
-              Status: {busy ? 'Busy' : 'Ready'} | Build: {buildTimeRef.current} · {proc}
+              Status: {busy ? 'Busy' : 'Ready'} | Build: {buildTimeRef.current} -proxy-try · {proc}
             </div>
           </div>
+          {apiWarn && (
+            <div className="mt-2 text-sm text-red-300">
+              {apiWarn}
+            </div>
+          )}
+          {rec?.name === '识别失败' && typeof rec?.intro === 'string' && rec.intro.includes('识别受阻') && (
+            <div className="mt-3 flex gap-2">
+              <button
+                className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20"
+                onClick={() => {
+                  const text = `${rec?.intro ?? ''}\n${rec?.facts ?? ''}`
+                  navigator.clipboard?.writeText(text).catch(() => {})
+                }}
+              >
+                复制诊断信息
+              </button>
+              <button
+                className="px-3 py-2 rounded-md bg-white/10 hover:bg白色/20"
+                onClick={() => {
+                  try {
+                    window.open(window.location.href, '_blank')
+                  } catch (e) {
+                    void e
+                  }
+                }}
+              >
+                切换到电脑端
+              </button>
+            </div>
+          )}
           <div className="mt-2">
             <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>
             <div className="mt-2 text-sm leading-relaxed text-white/80">
