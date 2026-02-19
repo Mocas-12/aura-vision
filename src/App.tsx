@@ -237,7 +237,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="absolute left-0 right-0 bottom-16 z-20 p-4 pb-6">
+      <div className="absolute left-0 right-0 bottom-28 z-20 p-4 pb-6">
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-white/60">
