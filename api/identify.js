@@ -63,7 +63,7 @@ module.exports = function(req, res) {
     }
 
     var promptText = 'What is this? Answer in one Chinese word.'
-    var defaultModel = 'moonshotai/kimi-k2-5'
+    var defaultModel = 'meta/llama-3.2-11b-vision-instruct'
     var model = defaultModel
     var baseURL = 'https://integrate.api.nvidia.com/v1'
     var requestUrl = baseURL + '/chat/completions'
@@ -125,7 +125,9 @@ module.exports = function(req, res) {
           try { parsed = JSON.parse(buf) } catch (e) { parsed = { raw: buf } }
           var text = extractContent(parsed)
           var status = nres.statusCode || 200
-          done(null, { status: status, content: text, parsed: parsed })
+          var statusText = nres.statusMessage || ''
+          var headers = nres.headers || {}
+          done(null, { status: status, statusText: statusText, headers: headers, content: text, parsed: parsed })
         })
       })
       nreq.on('error', function(err) {
@@ -139,14 +141,30 @@ module.exports = function(req, res) {
       if (err1) {
         res.statusCode = 502
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
-        res.end(JSON.stringify({ error: 'NVIDIA request failed', message: String(err1 && err1.message ? err1.message : err1) }))
+        res.end(JSON.stringify({
+          error: 'NVIDIA request failed',
+          message: String(err1 && err1.message ? err1.message : err1),
+          request_url: requestUrl
+        }))
         return
       }
       res.statusCode = r1.status
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
       var primaryChoice = null
       try { primaryChoice = r1.parsed && r1.parsed.choices ? r1.parsed.choices[0] : null } catch (e) {}
-      var raw_choice_json = (!r1.content && primaryChoice) ? JSON.stringify(primaryChoice) : null
+      var raw_choice_json = null
+      if (!r1.content) {
+        try {
+          raw_choice_json = JSON.stringify({
+            statusText: r1.statusText,
+            headers: r1.headers,
+            choice0: primaryChoice,
+            request_url: requestUrl
+          })
+        } catch (e) {
+          raw_choice_json = JSON.stringify({ request_url: requestUrl })
+        }
+      }
       res.end(JSON.stringify({
         status: r1.status,
         empty: !r1.content,
