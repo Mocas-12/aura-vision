@@ -108,7 +108,7 @@ export default function App() {
       out.height = targetSize
       const octx = out.getContext('2d')
       octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
-      let dataUrl: string | null = out.toDataURL('image/jpeg', 0.5)
+      let dataUrl: string | null = out.toDataURL('image/jpeg', 0.2)
       dataUrl = dataUrl?.replace(/\s/g, '') ?? null
       setBusy(true)
       setProc('fetching')
