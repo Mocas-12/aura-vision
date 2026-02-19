@@ -63,7 +63,7 @@ module.exports = function(req, res) {
     }
 
     var promptText = 'What is this? Answer in one Chinese word.'
-    var defaultModel = 'nvidia/moonshotai/kimi-v1.5'
+    var defaultModel = 'meta/llama-3.2-11b-vision-instruct'
     var model = defaultModel
     var baseURL = 'https://integrate.api.nvidia.com/v1'
     var requestUrl = baseURL + '/chat/completions'
@@ -92,6 +92,7 @@ module.exports = function(req, res) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': 'Bearer ' + apiKey
         }
       }
@@ -113,12 +114,19 @@ module.exports = function(req, res) {
       return text
     }
 
+    function maskKey(k) {
+      var s = String(k || '')
+      var head = s.slice(0, 10)
+      var tail = s.slice(-4)
+      return head + '...' + tail
+    }
+
     function sendOnce(currModel, localPayload, done) {
       localPayload = localPayload ? JSON.parse(JSON.stringify(localPayload)) : JSON.parse(JSON.stringify(payload))
       localPayload.model = currModel
       var opts = makeOptions()
       var buf = ''
-      try { console.log('NVIDIA request URL:', requestUrl, 'model:', currModel) } catch (e) {}
+      try { console.log('NVIDIA request URL:', requestUrl, 'model:', currModel, 'auth:', maskKey(apiKey)) } catch (e) {}
       var nreq = https.request(opts, function(nres) {
         nres.on('data', function(d) { buf += d })
         nres.on('end', function() {
@@ -147,6 +155,74 @@ module.exports = function(req, res) {
           message: String(err1 && err1.message ? err1.message : err1),
           request_url: requestUrl
         }))
+        return
+      }
+      if (r1.status === 404) {
+        var m2 = 'nvidia/moonshotai/kimi-v1.5'
+        sendOnce(m2, payload, function(err2, r2) {
+          if (err2) {
+            res.statusCode = 502
+            res.setHeader('Content-Type', 'application/json; charset=utf-8')
+            res.end(JSON.stringify({
+              error: 'NVIDIA request failed',
+              message: String(err2 && err2.message ? err2.message : err2),
+              request_url: requestUrl
+            }))
+            return
+          }
+          if (r2.status === 404) {
+            var m3 = 'moonshotai/kimi-v1.5'
+            sendOnce(m3, payload, function(err3, r3) {
+              if (err3) {
+                res.statusCode = 502
+                res.setHeader('Content-Type', 'application/json; charset=utf-8')
+                res.end(JSON.stringify({
+                  error: 'NVIDIA request failed',
+                  message: String(err3 && err3.message ? err3.message : err3),
+                  request_url: requestUrl
+                }))
+                return
+              }
+              res.statusCode = r3.status
+              res.setHeader('Content-Type', 'application/json; charset=utf-8')
+              var choice3 = null
+              try { choice3 = r3.parsed && r3.parsed.choices ? r3.parsed.choices[0] : null } catch (e) {}
+              var raw3 = null
+              if (!r3.content) {
+                try { raw3 = JSON.stringify({ statusText: r3.statusText, headers: r3.headers, choice0: choice3, request_url: requestUrl }) } catch (e) { raw3 = JSON.stringify({ request_url: requestUrl }) }
+              }
+              res.end(JSON.stringify({
+                status: r3.status,
+                empty: !r3.content,
+                content: r3.content,
+                model_used: m3,
+                nvidia: r3.content ? r3.parsed : choice3,
+                nvidia_primary_choice: choice3,
+                raw_choice_json: raw3,
+                request_url: requestUrl
+              }))
+            })
+            return
+          }
+          res.statusCode = r2.status
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          var choice2 = null
+          try { choice2 = r2.parsed && r2.parsed.choices ? r2.parsed.choices[0] : null } catch (e) {}
+          var raw2 = null
+          if (!r2.content) {
+            try { raw2 = JSON.stringify({ statusText: r2.statusText, headers: r2.headers, choice0: choice2, request_url: requestUrl }) } catch (e) { raw2 = JSON.stringify({ request_url: requestUrl }) }
+          }
+          res.end(JSON.stringify({
+            status: r2.status,
+            empty: !r2.content,
+            content: r2.content,
+            model_used: m2,
+            nvidia: r2.content ? r2.parsed : choice2,
+            nvidia_primary_choice: choice2,
+            raw_choice_json: raw2,
+            request_url: requestUrl
+          }))
+        })
         return
       }
       res.statusCode = r1.status
