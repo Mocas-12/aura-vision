@@ -63,10 +63,10 @@ module.exports = function(req, res) {
     }
 
     var promptText = 'What is this? Answer in one Chinese word.'
-    var defaultModel = 'moonshotai/kimi-v1.5'
+    var defaultModel = 'nvidia/moonshotai/kimi-v1.5'
     var model = defaultModel
     var baseURL = 'https://integrate.api.nvidia.com/v1'
-    var requestUrl = baseURL + '/chat/completions'
+    var requestUrl = new URL('/chat/completions', baseURL).toString()
 
     var payload = {
       model: model,
@@ -118,6 +118,7 @@ module.exports = function(req, res) {
       localPayload.model = currModel
       var opts = makeOptions()
       var buf = ''
+      try { console.log('NVIDIA request URL:', requestUrl, 'model:', currModel) } catch (e) {}
       var nreq = https.request(opts, function(nres) {
         nres.on('data', function(d) { buf += d })
         nres.on('end', function() {
