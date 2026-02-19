@@ -6,7 +6,7 @@ type VercelResponseLike = {
   setHeader: (name: string, value: string) => void
 }
 
-export default async function handler(req: IncomingMessage, res: VercelResponseLike) {
+async function handler(req: IncomingMessage, res: VercelResponseLike) {
   try {
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Origin', '*')
@@ -89,3 +89,4 @@ export default async function handler(req: IncomingMessage, res: VercelResponseL
     res.status(500).json({ error: msg })
   }
 }
+export default handler

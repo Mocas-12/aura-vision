@@ -1,13 +1,14 @@
 {
+  "version": 2,
   "builds": [
     { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
     { "src": "api/identify.ts", "use": "@vercel/node" }
   ],
   "functions": {
-    "api/*.ts": { "runtime": "vercel-node@latest" }
+    "api/identify.ts": { "runtime": "vercel-node@latest" }
   },
-  "rewrites": [
-    { "source": "/api/identify", "destination": "/api/identify.ts" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/identify", "dest": "/api/identify.ts", "methods": ["POST", "OPTIONS"] },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
