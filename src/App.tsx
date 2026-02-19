@@ -285,13 +285,15 @@ export default function App() {
           </div>
         </div>
       </div>
-      <div className="relative z-10 w-full mt-auto pt-5 mb-10">
-        <div className="glass mx-auto w-[92%] max-w-[640px] rounded-2xl px-4 py-3 text-center flex flex-col items-center gap-2" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="relative z-10 w-full mt-auto pt-5 mb-[60px]">
+        <div className="glass mx-auto w-[92%] max-w-[640px] rounded-2xl py-3 text-center flex flex-col items-center gap-2" style={{ backgroundColor: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(8px)' }}>
           <div className="text-sm text白色/80">👁️ 浏览量: {viewCount} | 👤 访客数: {visitorCount}</div>
-          <div className="text-sm text白色/70 flex items-center justify-center">
-            <img src="https://github.com/Mocas-12.png" alt="avatar" className="inline-block w-6 h-6 rounded-full mr-2" />
-            作者：Unlimited Box | 邮箱：
-            <a href="mailto:a18577y@gmail.com" className="underline text白色/80 ml-1">a18577y@gmail.com</a>
+          <div className="text-sm text白色/70 flex items-center justify-center gap-2">
+            <img src="https://github.com/Mocas-12.png" alt="avatar" className="w-6 h-6 rounded-full" />
+            <span>作者：Unlimited Box</span>
+            <span>|</span>
+            <span>邮箱：</span>
+            <a href="mailto:a18577y@gmail.com" className="underline text白色/80">a18577y@gmail.com</a>
           </div>
         </div>
       </div>
