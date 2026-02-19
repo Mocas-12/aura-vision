@@ -7,7 +7,7 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ?? null
+  const apiKey = '' as const
   const [rec, setRec] = useState<Recognition | null>(null)
   const [busy, setBusy] = useState(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
@@ -76,10 +76,7 @@ export default function App() {
   useEffect(() => {
     const interval = window.setInterval(async () => {
       if (!cameraReady) return
-      if (!apiKey) {
-        setRec({ name: '未配置 API Key', intro: '请在环境变量中设置 VITE_GEMINI_API_KEY', facts: '' })
-        return
-      }
+      // 后端已使用 NVIDIA_API_KEY，不再需要前端密钥
       if (busy || isProcessingRef.current) return
       const v = videoRef.current
       const c = canvasRef.current

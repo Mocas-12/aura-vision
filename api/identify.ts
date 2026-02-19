@@ -14,7 +14,7 @@ export default async function handler(req: IncomingMessage, res: VercelResponseL
     }
     const apiKey = process.env.NVIDIA_API_KEY
     if (!apiKey) {
-      res.status(500).json({ error: 'Missing NVIDIA_API_KEY' })
+      res.status(500).json({ error: 'API 密钥未配置，请在 Vercel Settings 中设置 NVIDIA_API_KEY 并重新部署。' })
       return
     }
     let bodyStr = ''
