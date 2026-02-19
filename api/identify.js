@@ -63,8 +63,10 @@ module.exports = function(req, res) {
     }
 
     var promptText = 'What is this? Answer in one Chinese word.'
-    var defaultModel = 'moonshotai/kimi-2.5'
+    var defaultModel = 'moonshotai/kimi-k2-5'
     var model = defaultModel
+    var baseURL = 'https://integrate.api.nvidia.com/v1'
+    var requestUrl = baseURL + '/chat/completions'
 
     var payload = {
       model: model,
@@ -152,7 +154,8 @@ module.exports = function(req, res) {
         model_used: model,
         nvidia: r1.content ? r1.parsed : primaryChoice,
         nvidia_primary_choice: primaryChoice,
-        raw_choice_json: raw_choice_json
+        raw_choice_json: raw_choice_json,
+        request_url: requestUrl
       }))
     })
   })
