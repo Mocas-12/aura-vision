@@ -46,7 +46,7 @@ module.exports = function(req, res) {
     }
 
     var raw = String(input.imageDataUrl || input.base64 || input.image || '')
-    var base64 = raw.replace(/^data:[^;]+;base64,/i, '').replace(/\s+/g, '')
+    var base64 = raw.replace(/^data:[^;]+;base64,/i, '').replace(/\s/g, '')
     if (!base64) {
       res.statusCode = 400
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -81,8 +81,8 @@ module.exports = function(req, res) {
         {
           role: 'user',
           content: [
-            { type: 'text', text: promptText },
-            { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } }
+            { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } },
+            { type: 'text', text: promptText }
           ]
         }
       ]
@@ -150,12 +150,15 @@ module.exports = function(req, res) {
       if (!needFallback) {
         res.statusCode = r1.status
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        var primaryChoice = null
+        try { primaryChoice = r1.parsed && r1.parsed.choices ? r1.parsed.choices[0] : null } catch (e) {}
         res.end(JSON.stringify({
           status: r1.status,
           empty: !r1.content,
           content: r1.content,
           model_used: model,
-          nvidia: r1.parsed
+          nvidia: r1.content ? r1.parsed : primaryChoice,
+          nvidia_primary_choice: primaryChoice
         }))
         return
       }
@@ -176,6 +179,10 @@ module.exports = function(req, res) {
         }
         var finalContent = r2 && r2.content ? r2.content : r1.content
         var finalStatus = r2 && r2.content ? r2.status : r1.status
+        var primaryChoice2 = null
+        var fallbackChoice = null
+        try { primaryChoice2 = r1.parsed && r1.parsed.choices ? r1.parsed.choices[0] : null } catch (e) {}
+        try { fallbackChoice = r2.parsed && r2.parsed.choices ? r2.parsed.choices[0] : null } catch (e) {}
         res.statusCode = finalStatus
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
         res.end(JSON.stringify({
@@ -185,8 +192,10 @@ module.exports = function(req, res) {
           model_used: r2 && r2.content ? fallback : model,
           primary_status: r1.status,
           fallback_status: r2.status,
-          nvidia_primary: r1.parsed,
-          nvidia_fallback: r2.parsed
+          nvidia_primary: finalContent ? r1.parsed : primaryChoice2,
+          nvidia_fallback: r2 && r2.content ? r2.parsed : fallbackChoice,
+          nvidia_primary_choice: primaryChoice2,
+          nvidia_fallback_choice: fallbackChoice
         }))
       })
     })
