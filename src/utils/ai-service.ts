@@ -43,6 +43,7 @@ export async function recognizeNearestCenterObject(opts: {
       }
     }
     const json: unknown = await res.json()
+    const rawChoiceJson = (json as { raw_choice_json?: string | null }).raw_choice_json ?? null
     const choices = (json as { choices?: Array<{ message?: { content?: unknown } }> }).choices ?? []
     const contentAny = choices?.[0]?.message?.content
     let text = ''
@@ -52,6 +53,18 @@ export async function recognizeNearestCenterObject(opts: {
       text = (contentAny as Array<{ type?: string; text?: string }>).map((p) => p?.text ?? '').filter(Boolean).join('\n')
     } else {
       text = ''
+    }
+    if (!text) {
+      if (choices?.[0]) {
+        try {
+          text = JSON.stringify(choices[0])
+        } catch {
+          text = ''
+        }
+      }
+      if (!text && rawChoiceJson) {
+        text = rawChoiceJson
+      }
     }
     if (!text) {
       throw new Error('AI 返回内容为空')

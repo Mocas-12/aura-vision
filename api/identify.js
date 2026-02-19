@@ -62,7 +62,7 @@ module.exports = function(req, res) {
       return
     }
 
-    var promptText = 'What is this? Answer in one Chinese word.'
+    var promptText = 'Describe this image in one Chinese word.'
     var defaultModel = 'meta/llama-3.2-11b-vision-instruct'
     var model = defaultModel
     var baseURL = 'https://integrate.api.nvidia.com/v1'
@@ -70,7 +70,7 @@ module.exports = function(req, res) {
 
     var payload = {
       model: model,
-      max_tokens: 50,
+      max_tokens: 100,
       stream: false,
       temperature: 0.2,
       messages: [
@@ -212,16 +212,10 @@ module.exports = function(req, res) {
           if (!r2.content) {
             try { raw2 = JSON.stringify({ statusText: r2.statusText, headers: r2.headers, choice0: choice2, request_url: requestUrl }) } catch (e) { raw2 = JSON.stringify({ request_url: requestUrl }) }
           }
-          res.end(JSON.stringify({
-            status: r2.status,
-            empty: !r2.content,
-            content: r2.content,
-            model_used: m2,
-            nvidia: r2.content ? r2.parsed : choice2,
-            nvidia_primary_choice: choice2,
-            raw_choice_json: raw2,
-            request_url: requestUrl
-          }))
+          var out2 = r2.parsed || {}
+          if (raw2 != null) out2.raw_choice_json = raw2
+          out2.request_url = requestUrl
+          res.end(JSON.stringify(out2))
         })
         return
       }
@@ -242,16 +236,10 @@ module.exports = function(req, res) {
           raw_choice_json = JSON.stringify({ request_url: requestUrl })
         }
       }
-      res.end(JSON.stringify({
-        status: r1.status,
-        empty: !r1.content,
-        content: r1.content,
-        model_used: model,
-        nvidia: r1.content ? r1.parsed : primaryChoice,
-        nvidia_primary_choice: primaryChoice,
-        raw_choice_json: raw_choice_json,
-        request_url: requestUrl
-      }))
+      var out1 = r1.parsed || {}
+      if (raw_choice_json != null) out1.raw_choice_json = raw_choice_json
+      out1.request_url = requestUrl
+      res.end(JSON.stringify(out1))
     })
   })
 }
