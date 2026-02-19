@@ -46,9 +46,6 @@ module.exports = function(req, res) {
     }
 
     var raw = String(input.imageDataUrl || input.base64 || input.image || '')
-    var mime = 'image/jpeg'
-    if (/^data:image\/png;base64,/i.test(raw)) mime = 'image/png'
-    // strip data URL prefix if present
     var base64 = raw.replace(/^data:[^;]+;base64,/i, '').replace(/\s+/g, '')
     if (!base64) {
       res.statusCode = 400
@@ -73,7 +70,7 @@ module.exports = function(req, res) {
           role: 'user',
           content: [
             { type: 'text', text: promptText },
-            { type: 'image', image: { data: base64, mime_type: mime } }
+            { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } }
           ]
         }
       ]
