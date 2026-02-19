@@ -62,7 +62,7 @@ module.exports = function(req, res) {
       return
     }
 
-    var promptText = 'You are a helpful assistant. Identify the object in this image. If it is a drink like Wheat Tea (麦茶), please tell me its name and key features in Chinese.'
+    var promptText = 'What is this? Answer in one Chinese word.'
     var allowedModels = ['meta/llama-3.2-11b-vision-instruct', 'nvidia/llama-3.1-405b-instruct']
     var model = String((input && input.model) || '').trim()
     if (allowedModels.indexOf(model) === -1) model = allowedModels[0]
@@ -70,14 +70,9 @@ module.exports = function(req, res) {
     var payload = {
       model: model,
       max_tokens: 512,
+      stream: false,
       temperature: 0.2,
       messages: [
-        {
-          role: 'system',
-          content: [
-            { type: 'text', text: 'You are a helpful assistant. The image is a clear shot of a beverage. Ignore the background.' }
-          ]
-        },
         {
           role: 'user',
           content: [
@@ -152,13 +147,15 @@ module.exports = function(req, res) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
         var primaryChoice = null
         try { primaryChoice = r1.parsed && r1.parsed.choices ? r1.parsed.choices[0] : null } catch (e) {}
+        var raw_choice_json = (!r1.content && primaryChoice) ? JSON.stringify(primaryChoice) : null
         res.end(JSON.stringify({
           status: r1.status,
           empty: !r1.content,
           content: r1.content,
           model_used: model,
           nvidia: r1.content ? r1.parsed : primaryChoice,
-          nvidia_primary_choice: primaryChoice
+          nvidia_primary_choice: primaryChoice,
+          raw_choice_json: raw_choice_json
         }))
         return
       }
@@ -183,6 +180,7 @@ module.exports = function(req, res) {
         var fallbackChoice = null
         try { primaryChoice2 = r1.parsed && r1.parsed.choices ? r1.parsed.choices[0] : null } catch (e) {}
         try { fallbackChoice = r2.parsed && r2.parsed.choices ? r2.parsed.choices[0] : null } catch (e) {}
+        var raw_choice_json2 = (!finalContent && (fallbackChoice || primaryChoice2)) ? JSON.stringify(fallbackChoice || primaryChoice2) : null
         res.statusCode = finalStatus
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
         res.end(JSON.stringify({
@@ -195,7 +193,8 @@ module.exports = function(req, res) {
           nvidia_primary: finalContent ? r1.parsed : primaryChoice2,
           nvidia_fallback: r2 && r2.content ? r2.parsed : fallbackChoice,
           nvidia_primary_choice: primaryChoice2,
-          nvidia_fallback_choice: fallbackChoice
+          nvidia_fallback_choice: fallbackChoice,
+          raw_choice_json: raw_choice_json2
         }))
       })
     })
