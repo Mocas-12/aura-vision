@@ -17,7 +17,7 @@ export async function recognizeNearestCenterObject(opts: {
   prompt?: string
   signal?: AbortSignal
 }): Promise<Recognition | null> {
-  const url = 'https://aura-vision-beige.vercel.app/api/identify'
+  const url = 'https://square-bread-b238.a18577y.workers.dev'
   const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '')
   const requestBody = {
     imageDataUrl: cleanImageUrl,
