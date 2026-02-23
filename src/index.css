@@ -69,20 +69,22 @@ body {
 .scrollbox {
   position: relative;
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: #00f3ff transparent;
+  -ms-overflow-style: auto;
+  padding: 15px;
 }
 .scrollbox::-webkit-scrollbar {
-  width: 2px;
-  height: 2px;
+  width: 4px;
+  height: 4px;
   background: transparent;
 }
 .scrollbox::-webkit-scrollbar-track {
   background: transparent;
 }
 .scrollbox::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 2px;
+  background: #00f3ff;
+  border-radius: 4px;
 }
 .scrollbox::before {
   content: '';

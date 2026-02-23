@@ -379,7 +379,7 @@ export default function App() {
           )}
           <div
             className="mt-2 scrollbox cyber-panel"
-            style={{ maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto' }}
+            style={{ height: 'auto', maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto', padding: '15px' }}
             ref={resultRef}
           >
             <div className="text-2xl font-semibold cyber-title">{typedName || '等待识别…'}</div>
