@@ -69,6 +69,7 @@ export async function recognizeNearestCenterObject(opts: {
     if (!text) {
       throw new Error('AI 返回内容为空')
     }
+    console.log('NVIDIA fullText:', text)
     {
       const onlyEnglish = text.replace(/[^a-zA-Z]/g, '')
       const englishChars = onlyEnglish.length

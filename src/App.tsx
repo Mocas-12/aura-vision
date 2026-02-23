@@ -27,18 +27,31 @@ export default function App() {
   const [autoMode, setAutoMode] = useState(true)
   const [silenceUntil, setSilenceUntil] = useState<number>(0)
   const lastSuccessRef = useRef<boolean>(false)
+  const [manualLoading, setManualLoading] = useState(false)
 
   const [typedName, typingName] = useTypewriter(rec?.name ?? '', 15)
   const [typedIntro, typingIntro] = useTypewriter(rec?.intro ?? '', 10)
   const [typedFacts, typingFacts] = useTypewriter(rec?.facts ?? '', 10)
   const streaming = typingName || typingIntro || typingFacts
 
-  const triggerRecognize = useCallback(() => {
+  const triggerRecognize = useCallback(async (isManual: boolean = false) => {
+    if (isManual) {
+      console.log('Manual trigger clicked')
+    }
     if (!cameraReady) return
-    if (busy || isProcessingRef.current) return
-    if (!autoMode) return
+    if (isManual) {
+      if (abortRef.current) {
+        try { abortRef.current.abort() } catch (e) { console.warn('abort previous request error', e) }
+        abortRef.current = null
+      }
+      setBusy(false)
+      isProcessingRef.current = false
+    } else {
+      if (busy || isProcessingRef.current) return
+      if (!autoMode) return
+      if (Date.now() < silenceUntil) return
+    }
     if (streaming) return
-    if (Date.now() < silenceUntil) return
     if (!isPro()) {
       const r = remaining()
       if (r <= 0) {
@@ -87,6 +100,7 @@ export default function App() {
       }
     }
     setBusy(true)
+    if (isManual) setManualLoading(true)
     setProc('fetching')
     isProcessingRef.current = true
     if (abortRef.current) {
@@ -99,90 +113,90 @@ export default function App() {
     }
     abortRef.current = new AbortController()
     const controller = abortRef.current
-    ;(async () => {
-      try {
-        const timeoutTag = Symbol('timeout')
-        const resultOrTimeout = await Promise.race([
-          recognizeNearestCenterObject({
-            apiKey,
-            imageDataUrl: dataUrl!,
-            signal: controller!.signal,
-          }),
-          new Promise<Recognition | symbol>((resolve) =>
-            setTimeout(() => resolve(timeoutTag), 8000),
-          ),
-        ])
-        if (resultOrTimeout === timeoutTag) {
-          console.warn('Processing Status: timeout')
-          setProc('timeout')
-          setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
-          setBusy(false)
-          isProcessingRef.current = false
-          abortRef.current?.abort()
-          abortRef.current = null
-          dataUrl = null
-          return
-        }
-        const result = resultOrTimeout as Recognition | null
-        if (result) {
-          setRec(result)
-          setProc('done')
-          lastSuccessRef.current = result.name !== '识别失败'
-          try {
-            const el = resultRef.current
-            if (el) {
-              el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-              const s = spacerRef.current
-              if (s) s.style.height = el.scrollHeight + 'px'
-            }
-          } catch { void 0 }
-          try {
-            setTimeout(() => {
-              const doc = document.documentElement
-              const top = Math.max(doc.scrollHeight, document.body.scrollHeight)
-              window.scrollTo({ top, behavior: 'smooth' })
-            }, 50)
-          } catch { void 0 }
-          if (result.name !== '识别失败') {
-            const sig = `${result.name}|${result.intro}`
-            if (sig !== lastSigRef.current) {
-              const ctx = audioCtxRef.current
-              if (ctx) {
-                const o = ctx.createOscillator()
-                const g = ctx.createGain()
-                o.type = 'sine'
-                o.frequency.setValueAtTime(880, ctx.currentTime)
-                g.gain.setValueAtTime(0, ctx.currentTime)
-                g.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01)
-                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25)
-                o.connect(g)
-                g.connect(ctx.destination)
-                o.start()
-                o.stop(ctx.currentTime + 0.25)
-              }
-              lastSigRef.current = sig
-            }
-          }
-        } else {
-          setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
-          setProc('empty')
-        }
-      } catch (e) {
-        console.error('Processing Status: error', e)
-        const name = (e as { name?: string })?.name
-        let intro = (e as { message?: string })?.message || String(e)
-        if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
-          intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
-        }
-        setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
-        setProc('error')
-      } finally {
+    try {
+      const timeoutTag = Symbol('timeout')
+      const resultOrTimeout = await Promise.race([
+        recognizeNearestCenterObject({
+          apiKey,
+          imageDataUrl: dataUrl!,
+          signal: controller!.signal,
+        }),
+        new Promise<Recognition | symbol>((resolve) =>
+          setTimeout(() => resolve(timeoutTag), 8000),
+        ),
+      ])
+      if (resultOrTimeout === timeoutTag) {
+        console.warn('Processing Status: timeout')
+        setProc('timeout')
+        setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
         setBusy(false)
         isProcessingRef.current = false
+        abortRef.current?.abort()
         abortRef.current = null
         dataUrl = null
+        if (isManual) setManualLoading(false)
+        return
       }
-    })()
+      const result = resultOrTimeout as Recognition | null
+      if (result) {
+        setRec(result)
+        setProc('done')
+        lastSuccessRef.current = result.name !== '识别失败'
+        try {
+          const el = resultRef.current
+          if (el) {
+            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+            const s = spacerRef.current
+            if (s) s.style.height = el.scrollHeight + 'px'
+          }
+        } catch { void 0 }
+        try {
+          setTimeout(() => {
+            const doc = document.documentElement
+            const top = Math.max(doc.scrollHeight, document.body.scrollHeight)
+            window.scrollTo({ top, behavior: 'smooth' })
+          }, 50)
+        } catch { void 0 }
+        if (result.name !== '识别失败') {
+          const sig = `${result.name}|${result.intro}`
+          if (sig !== lastSigRef.current) {
+            const ctx = audioCtxRef.current
+            if (ctx) {
+              const o = ctx.createOscillator()
+              const g = ctx.createGain()
+              o.type = 'sine'
+              o.frequency.setValueAtTime(880, ctx.currentTime)
+              g.gain.setValueAtTime(0, ctx.currentTime)
+              g.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01)
+              g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25)
+              o.connect(g)
+              g.connect(ctx.destination)
+              o.start()
+              o.stop(ctx.currentTime + 0.25)
+            }
+            lastSigRef.current = sig
+          }
+        }
+      } else {
+        setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
+        setProc('empty')
+      }
+    } catch (e) {
+      console.error('Processing Status: error', e)
+      const name = (e as { name?: string })?.name
+      let intro = (e as { message?: string })?.message || String(e)
+      if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
+        intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
+      }
+      setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
+      setProc('error')
+    } finally {
+      setBusy(false)
+      isProcessingRef.current = false
+      abortRef.current = null
+      dataUrl = null
+      if (isManual) setManualLoading(false)
+    }
   }, [cameraReady, busy, autoMode, streaming, silenceUntil])
 
   useEffect(() => {
@@ -330,11 +344,18 @@ export default function App() {
               </button>
               {!autoMode && (
                 <button
-                  className="px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500"
-                  onClick={() => triggerRecognize()}
-                  disabled={busy || isProcessingRef.current}
+                  className="px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-60"
+                  onClick={async () => {
+                    setManualLoading(true)
+                    try {
+                      await triggerRecognize(true)
+                    } finally {
+                      setManualLoading(false)
+                    }
+                  }}
+                  disabled={manualLoading || busy || isProcessingRef.current}
                 >
-                  手动识别
+                  {manualLoading || busy || isProcessingRef.current ? '识别中...' : '手动识别'}
                 </button>
               )}
             </div>
@@ -370,8 +391,8 @@ export default function App() {
             </div>
           )}
           <div
-            className="mt-2 overflow-y-auto"
-            style={{ paddingBottom: '100px', WebkitOverflowScrolling: 'touch' }}
+            className="mt-2"
+            style={{ paddingBottom: '100px', WebkitOverflowScrolling: 'touch', height: 'auto', display: 'block', overflow: 'visible' }}
             ref={resultRef}
           >
             <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>

@@ -70,7 +70,7 @@ module.exports = function(req, res) {
 
     var payload = {
       model: model,
-      max_tokens: 100,
+      max_tokens: 1024,
       stream: false,
       temperature: 0.2,
       messages: [
