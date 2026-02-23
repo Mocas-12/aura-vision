@@ -277,7 +277,7 @@ export default function App() {
 
   useEffect(() => {
     if (proc === 'done' && !streaming && lastSuccessRef.current) {
-      setSilenceUntil(Date.now() + 20000)
+      setSilenceUntil(Date.now() + 5000)
     }
   }, [proc, streaming])
 
