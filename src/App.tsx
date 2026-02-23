@@ -244,7 +244,7 @@ export default function App() {
   useEffect(() => {
     initDefaults()
     let done = false
-    fetch('/api/identify', { method: 'GET' })
+    fetch('https://aura-vision-beige.vercel.app/api/identify', { method: 'GET' })
       .then((r) => {
         if (!done && r.status === 404) {
           setApiWarn('API 路由未配置')
