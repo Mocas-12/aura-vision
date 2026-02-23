@@ -83,14 +83,41 @@ export default function App() {
     crop.height = side
     const cctx = crop.getContext('2d')
     cctx?.drawImage(c, sx, sy, side, side, 0, 0, side, side)
-    const targetSize = Math.min(side, 640)
-    const out = document.createElement('canvas')
-    out.width = targetSize
-    out.height = targetSize
-    const octx = out.getContext('2d')
-    octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
-    let dataUrl: string | null = out.toDataURL('image/jpeg', 0.2)
-    dataUrl = dataUrl?.replace(/\s/g, '') ?? null
+    function approxBytes(base64DataUrl: string) {
+      const cleaned = base64DataUrl.replace(/\s/g, '')
+      const idx = cleaned.indexOf('base64,')
+      const b64 = idx >= 0 ? cleaned.slice(idx + 7) : cleaned
+      return Math.floor(b64.length * 3 / 4)
+    }
+    const sizeCandidates = [800, 640, 480, 360, 320]
+    const qualityCandidates = [0.7, 0.65, 0.6, 0.5, 0.4]
+    let dataUrl: string | null = null
+    outer: for (let i = 0; i < sizeCandidates.length; i++) {
+      const target = Math.min(side, sizeCandidates[i])
+      const out = document.createElement('canvas')
+      out.width = target
+      out.height = target
+      const octx = out.getContext('2d')
+      octx?.drawImage(crop, 0, 0, side, side, 0, 0, target, target)
+      for (let j = 0; j < qualityCandidates.length; j++) {
+        const q = qualityCandidates[j]
+        const url = out.toDataURL('image/jpeg', q)
+        const bytes = approxBytes(url)
+        if (bytes <= 200 * 1024) {
+          dataUrl = url.replace(/\s/g, '')
+          break outer
+        }
+      }
+    }
+    if (!dataUrl) {
+      const fallback = document.createElement('canvas')
+      const target = Math.min(side, 320)
+      fallback.width = target
+      fallback.height = target
+      const fctx = fallback.getContext('2d')
+      fctx?.drawImage(crop, 0, 0, side, side, 0, 0, target, target)
+      dataUrl = fallback.toDataURL('image/jpeg', 0.4).replace(/\s/g, '')
+    }
     if (!isPro()) {
       const next = getCount() + 1
       setCount(next)
@@ -122,7 +149,7 @@ export default function App() {
           signal: controller!.signal,
         }),
         new Promise<Recognition | symbol>((resolve) =>
-          setTimeout(() => resolve(timeoutTag), 8000),
+          setTimeout(() => resolve(timeoutTag), 60000),
         ),
       ])
       if (resultOrTimeout === timeoutTag) {
@@ -387,7 +414,7 @@ export default function App() {
               className="mt-2 text-sm whitespace-pre-wrap break-all cyber-title"
               style={{ lineHeight: 1.6 }}
             >
-              {busy ? 'AI 正在深度思考中，请稍候...' : typedIntro}
+              {busy ? '深度扫描中，请稍候...' : typedIntro}
             </div>
             {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
               <div
