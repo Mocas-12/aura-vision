@@ -10,14 +10,15 @@ export async function recognizeNearestCenterObject(opts: {
   prompt?: string
   signal?: AbortSignal
 }): Promise<Recognition | null> {
-  const url = 'https://square-bread-b238.a18577y.workers.dev/'
+  const workerBase = 'https://square-bread-b238.a18577y.workers.dev/'
+  const url = `${workerBase}?t=${Date.now()}`
   const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '').replace(/^data:[^;]+;base64,/i, '')
   const requestBody = {
     imageDataUrl: cleanImageUrl,
     prompt: opts.prompt ?? '请用中文总结图片内容或说明文大意，最多30字。',
   }
   try {
-    const headersUsed = { 'Content-Type': 'application/json' }
+    const headersUsed = { 'Content-Type': 'application/json', Accept: 'application/json' }
     const res = await fetch(url, {
       method: 'POST',
       mode: 'cors',
@@ -30,25 +31,10 @@ export async function recognizeNearestCenterObject(opts: {
     if (res.status === 404) {
       const debugHeaders = { ...headersUsed, Origin: window.location.origin, UserAgent: navigator.userAgent }
       console.log('Request Headers (debug):', debugHeaders)
-      try {
-        const alt = 'https://aura-vision-beige.vercel.app/api/identify'
-        const res2 = await fetch(alt, {
-          method: 'POST',
-          mode: 'cors',
-          headers: headersUsed,
-          body: JSON.stringify(requestBody),
-          signal: opts.signal,
-        })
-        if (res2.ok) {
-          const t2 = await res2.text()
-          console.log('Fallback Raw Response:', t2)
-          return JSON.parse(t2)
-        }
-      } catch { /* ignore */ }
     }
     if (!res.ok) {
       console.error('Worker response error', res.status, responseText)
-      throw new Error(responseText || `${res.status} ${res.statusText}`)
+      throw new Error(`服务器响应异常 (${res.status}): ${responseText}`)
     }
     let json: unknown
     try {
