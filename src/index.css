@@ -105,6 +105,40 @@ body {
   background-repeat: no-repeat, repeat, repeat;
   border: 1px solid rgba(0, 255, 255, 0.3);
   box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.05);
+  position: relative;
+}
+
+.cyber-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(#00ffff, #00ffff) left top/12px 1px no-repeat,
+    linear-gradient(#00ffff, #00ffff) left top/1px 12px no-repeat,
+    linear-gradient(#00ffff, #00ffff) right top/12px 1px no-repeat,
+    linear-gradient(#00ffff, #00ffff) right top/1px 12px no-repeat,
+    linear-gradient(#00ffff, #00ffff) left bottom/12px 1px no-repeat,
+    linear-gradient(#00ffff, #00ffff) left bottom/1px 12px no-repeat,
+    linear-gradient(#00ffff, #00ffff) right bottom/12px 1px no-repeat,
+    linear-gradient(#00ffff, #00ffff) right bottom/1px 12px no-repeat;
+  opacity: 0.6;
+}
+
+@keyframes cyberScanMove {
+  0% { transform: translateY(-120%); }
+  100% { transform: translateY(120%); }
+}
+
+.cyber-panel::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 24px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,255,255,0.03), rgba(0,255,255,0));
+  animation: cyberScanMove 4s linear infinite;
 }
 
 .cyber-title {
@@ -112,20 +146,33 @@ body {
   text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
 }
 
+.cyber-text {
+  color: #00ffff;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+}
+
+.cyber-soft {
+  color: rgba(0, 255, 255, 0.8);
+}
+
 .action-btn {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  transition: transform 0.1s ease, background-color 0.2s ease, opacity 0.2s ease;
+  background: rgba(0, 40, 60, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 4px;
+  border: 1px solid #00ffff;
+  color: #00ffff;
+  box-shadow: 0 0 10px rgba(0,255,255,0.08);
+  transition: transform 0.1s ease, background-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 .action-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.98);
+  background: rgba(0, 255, 255, 0.2);
+  box-shadow: 0 0 16px rgba(0,255,255,0.25);
 }
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(0, 255, 255, 0.2);
+  box-shadow: 0 0 14px rgba(0,255,255,0.18);
 }
 .action-btn:disabled {
   opacity: 0.6;

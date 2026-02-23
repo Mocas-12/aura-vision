@@ -314,7 +314,7 @@ export default function App() {
       <div className="w-full p-4 pb-6">
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-white/60">
+            <div className="text-sm cyber-soft">
               Status: {streaming ? 'AI 正在详细介绍中...' : busy ? 'Busy' : 'Ready'} | Build: {buildTimeRef.current} -proxy-try · {proc}
             </div>
             <div className="flex items-center gap-3">
@@ -391,7 +391,7 @@ export default function App() {
             </div>
             {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
               <div
-                className="mt-3 text-sm text白色/80 whitespace-pre-wrap break-all"
+                className="mt-3 text-sm cyber-text whitespace-pre-wrap break-all"
                 style={{ lineHeight: 1.6 }}
               >
                 {typedFacts}
@@ -406,7 +406,7 @@ export default function App() {
           className="glass mx-auto rounded-2xl px-4 py-2 text-center flex flex-col items-center gap-2"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', width: 'fit-content', maxWidth: '90%' }}
         >
-          <div className="text-sm text白色/80 flex items-center justify-center gap-4">
+          <div className="text-sm cyber-text flex items-center justify-center gap-4">
             <span className="flex items-center gap-1">
               <span>👁️</span>
               <span style={{ fontFamily: 'monospace' }}>{viewCount}</span>
@@ -416,7 +416,7 @@ export default function App() {
               <span style={{ fontFamily: 'monospace' }}>{visitorCount}</span>
             </span>
           </div>
-          <div className="text-sm text白色/70 flex items-center justify-center gap-[10px] overflow-hidden flex-nowrap">
+          <div className="text-sm cyber-text flex items-center justify-center gap-[10px] overflow-hidden flex-nowrap">
             <img
               src="https://github.com/Mocas-12.png"
               alt="avatar"
@@ -425,7 +425,7 @@ export default function App() {
             />
             <span>Unlimited Box</span>
             <span>|</span>
-            <a href="mailto:a18577y@gmail.com" className="underline text白色/80">📧 a18577y@gmail.com</a>
+            <a href="mailto:a18577y@gmail.com" className="cyber-text" style={{ textDecoration: 'none' }}>📧 a18577y@gmail.com</a>
           </div>
         </div>
       </div>
