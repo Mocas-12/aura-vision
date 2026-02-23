@@ -73,9 +73,16 @@ body {
   -ms-overflow-style: none;
 }
 .scrollbox::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+  width: 2px;
+  height: 2px;
+  background: transparent;
+}
+.scrollbox::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbox::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
 }
 .scrollbox::before {
   content: '';
@@ -87,6 +94,22 @@ body {
   pointer-events: none;
   background: linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0));
   z-index: 1;
+}
+
+.cyber-panel {
+  background:
+    linear-gradient(135deg, rgba(10, 20, 30, 0.9) 0%, rgba(20, 40, 60, 0.8) 100%),
+    linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: auto, 20px 20px, 20px 20px;
+  background-repeat: no-repeat, repeat, repeat;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.05);
+}
+
+.cyber-title {
+  color: #00ffff;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
 }
 
 .action-btn {

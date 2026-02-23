@@ -378,13 +378,13 @@ export default function App() {
             </div>
           )}
           <div
-            className="mt-2 scrollbox"
+            className="mt-2 scrollbox cyber-panel"
             style={{ maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto' }}
             ref={resultRef}
           >
-            <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>
+            <div className="text-2xl font-semibold cyber-title">{typedName || '等待识别…'}</div>
             <div
-              className="mt-2 text-sm text-white/80 whitespace-pre-wrap break-all"
+              className="mt-2 text-sm whitespace-pre-wrap break-all cyber-title"
               style={{ lineHeight: 1.6 }}
             >
               {busy ? 'AI 正在深度思考中，请稍候...' : typedIntro}
