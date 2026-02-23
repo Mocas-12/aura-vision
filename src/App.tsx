@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { recognizeNearestCenterObject, type Recognition } from './utils/ai-service'
 import { useTypewriter } from './hooks/useTypewriter'
+import { initDefaults, isPro, remaining, getCount, setCount, QUOTA } from './utils/quota'
+import ActivationModal from './components/ActivationModal'
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -19,6 +21,7 @@ export default function App() {
   const [apiWarn, setApiWarn] = useState<string | null>(null)
   const [viewCount, setViewCount] = useState<number>(0)
   const [visitorCount, setVisitorCount] = useState<number>(1)
+  const [showActivation, setShowActivation] = useState(false)
 
   const typedName = useTypewriter(rec?.name ?? '', 15)
   const typedIntro = useTypewriter(rec?.intro ?? '', 10)
@@ -76,6 +79,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    initDefaults()
     let done = false
     fetch('/api/identify', { method: 'GET' })
       .then((r) => {
@@ -94,6 +98,13 @@ export default function App() {
       if (!cameraReady) return
       // 后端已使用 NVIDIA_API_KEY，不再需要前端密钥
       if (busy || isProcessingRef.current) return
+      if (!isPro()) {
+        const r = remaining()
+        if (r <= 0) {
+          setShowActivation(true)
+          return
+        }
+      }
       const v = videoRef.current
       const c = canvasRef.current
       if (!v || !c) {
@@ -126,6 +137,14 @@ export default function App() {
       octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
       let dataUrl: string | null = out.toDataURL('image/jpeg', 0.2)
       dataUrl = dataUrl?.replace(/\s/g, '') ?? null
+      if (!isPro()) {
+        const next = getCount() + 1
+        setCount(next)
+        const r2 = QUOTA - next
+        if (r2 <= 0) {
+          setShowActivation(true)
+        }
+      }
       setBusy(true)
       setProc('fetching')
       isProcessingRef.current = true
@@ -313,6 +332,13 @@ export default function App() {
           </div>
         </div>
       </div>
+      <ActivationModal
+        open={showActivation}
+        onClose={() => setShowActivation(false)}
+        onActivated={() => {
+          setShowActivation(false)
+        }}
+      />
     </div>
   )
 }
