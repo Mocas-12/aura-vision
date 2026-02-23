@@ -76,6 +76,12 @@ export async function recognizeNearestCenterObject(opts: {
     if (!text) {
       throw new Error('AI 返回内容为空')
     }
+    // 长文本清洗：去除冗余换行与空白
+    text = String(text)
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{2,}/g, '\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim()
     console.log('NVIDIA fullText:', text)
     {
       const onlyEnglish = text.replace(/[^a-zA-Z]/g, '')
