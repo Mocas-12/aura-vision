@@ -54,7 +54,7 @@ export default function ActivationModal({ open, onClose, onActivated }: Props) {
               className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20"
               onClick={() => {
                 try {
-                  window.open('https://mbd.pub/o/bread/mbd-YZWblJ9paA==', '_blank')
+                  window.open('https://mbd.pub/o/bread/mbd-YZWblZZpZQ==', '_blank')
                 } catch (e) {
                   void e
                 }
