@@ -27,6 +27,7 @@ export default function App() {
   const [silenceUntil, setSilenceUntil] = useState<number>(0)
   const lastSuccessRef = useRef<boolean>(false)
   const [manualLoading, setManualLoading] = useState(false)
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   const [typedName, typingName] = useTypewriter(rec?.name ?? '', 15)
   const [typedIntro, typingIntro] = useTypewriter(rec?.intro ?? '', 10)
@@ -316,16 +317,21 @@ export default function App() {
             <div className="text-sm text-white/60">
               Status: {streaming ? 'AI 正在详细介绍中...' : busy ? 'Busy' : 'Ready'} | Build: {buildTimeRef.current} -proxy-try · {proc}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
-                className={`px-3 py-1 rounded-md ${autoMode ? 'bg-white/20' : 'bg-white/10'}`}
-                onClick={() => setAutoMode((v) => !v)}
+                className="action-btn px-3 py-1"
+                onClick={() => {
+                  const next = !autoMode
+                  setAutoMode(next)
+                  setToastMsg(next ? '已开启自动模式：每 10 秒识别一次' : '已切换为手动模式：请点击按钮触发识别')
+                  window.setTimeout(() => setToastMsg(null), 2000)
+                }}
               >
                 {autoMode ? '自动识别：开' : '自动识别：关'}
               </button>
               {!autoMode && (
                 <button
-                  className="px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-60"
+                  className="action-btn px-3 py-1"
                   onClick={async () => {
                     setManualLoading(true)
                     try {
@@ -423,6 +429,11 @@ export default function App() {
           </div>
         </div>
       </div>
+      {toastMsg && (
+        <div className="toast">
+          <div className="inner">{toastMsg}</div>
+        </div>
+      )}
       <ActivationModal
         open={showActivation}
         onClose={() => setShowActivation(false)}
