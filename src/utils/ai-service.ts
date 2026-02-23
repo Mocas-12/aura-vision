@@ -30,6 +30,21 @@ export async function recognizeNearestCenterObject(opts: {
     if (res.status === 404) {
       const debugHeaders = { ...headersUsed, Origin: window.location.origin, UserAgent: navigator.userAgent }
       console.log('Request Headers (debug):', debugHeaders)
+      try {
+        const alt = 'https://aura-vision-beige.vercel.app/api/identify'
+        const res2 = await fetch(alt, {
+          method: 'POST',
+          mode: 'cors',
+          headers: headersUsed,
+          body: JSON.stringify(requestBody),
+          signal: opts.signal,
+        })
+        if (res2.ok) {
+          const t2 = await res2.text()
+          console.log('Fallback Raw Response:', t2)
+          return JSON.parse(t2)
+        }
+      } catch { /* ignore */ }
     }
     if (!res.ok) {
       console.error('Worker response error', res.status, responseText)
