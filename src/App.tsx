@@ -259,7 +259,7 @@ export default function App() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       triggerRecognize()
-    }, 10000)
+    }, 5000)
     return () => window.clearInterval(interval)
   }, [triggerRecognize])
 
@@ -323,7 +323,7 @@ export default function App() {
                 onClick={() => {
                   const next = !autoMode
                   setAutoMode(next)
-                  setToastMsg(next ? '已开启自动模式：每 10 秒识别一次' : '已切换为手动模式：请点击按钮触发识别')
+                  setToastMsg(next ? '已开启自动模式：每 5 秒识别一次' : '已切换为手动模式：请点击按钮触发识别')
                   window.setTimeout(() => setToastMsg(null), 2000)
                 }}
               >
