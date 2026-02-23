@@ -65,3 +65,26 @@ body {
   0% { top: -10%; }
   100% { top: 110%; }
 }
+
+.scrollbox {
+  position: relative;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbox::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.scrollbox::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0));
+  z-index: 1;
+}

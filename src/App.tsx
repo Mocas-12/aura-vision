@@ -23,7 +23,6 @@ export default function App() {
   const [visitorCount, setVisitorCount] = useState<number>(1)
   const [showActivation, setShowActivation] = useState(false)
   const resultRef = useRef<HTMLDivElement | null>(null)
-  const spacerRef = useRef<HTMLDivElement | null>(null)
   const [autoMode, setAutoMode] = useState(true)
   const [silenceUntil, setSilenceUntil] = useState<number>(0)
   const lastSuccessRef = useRef<boolean>(false)
@@ -145,17 +144,8 @@ export default function App() {
         try {
           const el = resultRef.current
           if (el) {
-            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-            const s = spacerRef.current
-            if (s) s.style.height = el.scrollHeight + 'px'
+            el.scrollTop = el.scrollHeight
           }
-        } catch { void 0 }
-        try {
-          setTimeout(() => {
-            const doc = document.documentElement
-            const top = Math.max(doc.scrollHeight, document.body.scrollHeight)
-            window.scrollTo({ top, behavior: 'smooth' })
-          }, 50)
         } catch { void 0 }
         if (result.name !== '识别失败') {
           const sig = `${result.name}|${result.intro}`
@@ -279,17 +269,8 @@ export default function App() {
       if (el) {
         setTimeout(() => {
           el.scrollTop = el.scrollHeight
-          const s = spacerRef.current
-          if (s) s.style.height = el.scrollHeight + 'px'
         }, 50)
       }
-    } catch { void 0 }
-    try {
-      setTimeout(() => {
-        const doc = document.documentElement
-        const top = Math.max(doc.scrollHeight, document.body.scrollHeight)
-        window.scrollTo({ top, behavior: 'smooth' })
-      }, 50)
     } catch { void 0 }
   }, [typedIntro, typedFacts, proc])
 
@@ -391,8 +372,8 @@ export default function App() {
             </div>
           )}
           <div
-            className="mt-2"
-            style={{ paddingBottom: '100px', WebkitOverflowScrolling: 'touch', height: 'auto', display: 'block', overflow: 'visible' }}
+            className="mt-2 scrollbox"
+            style={{ maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto' }}
             ref={resultRef}
           >
             <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>
@@ -413,7 +394,7 @@ export default function App() {
           </div>
         </div>
       </div>
-      <div ref={spacerRef} style={{ height: 0 }} />
+      
       <div className="relative z-10 w-full mt-auto pt-5 mb-10">
         <div
           className="glass mx-auto rounded-2xl px-4 py-2 text-center flex flex-col items-center gap-2"
