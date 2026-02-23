@@ -4,21 +4,14 @@ export type Recognition = {
   facts: string
 }
 
-function maskBearer(token: string): string {
-  const len = token.length
-  const head = token.slice(0, Math.min(6, len))
-  const tail = token.slice(Math.max(0, len - 4))
-  return `${head}${'*'.repeat(Math.max(0, len - head.length - tail.length))}${tail}`
-}
-
 export async function recognizeNearestCenterObject(opts: {
   apiKey: string
   imageDataUrl: string
   prompt?: string
   signal?: AbortSignal
 }): Promise<Recognition | null> {
-  const url = 'https://square-bread-b238.a18577y.workers.dev'
-  const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '')
+  const url = 'https://square-bread-b238.a18577y.workers.dev/'
+  const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '').replace(/^data:[^;]+;base64,/i, '')
   const requestBody = {
     imageDataUrl: cleanImageUrl,
     prompt: opts.prompt ?? '请用中文总结图片内容或说明文大意，最多30字。',
@@ -33,16 +26,26 @@ export async function recognizeNearestCenterObject(opts: {
       body: JSON.stringify(requestBody),
       signal: opts.signal,
     })
+    const responseText = await res.text()
+    console.log('Worker Raw Response:', responseText)
     if (!res.ok) {
-      const errText = await res.text()
-      console.error('NVIDIA API HTTP error', res.status, errText)
-      return {
-        name: '识别失败',
-        intro: `${res.status} ${res.statusText || ''} | ${url} | ${maskBearer(opts.apiKey)}`.trim(),
-        facts: `${errText.slice(0, 400)}\nBuild Time: ${new Date().toISOString()} -proxy-try`,
-      }
+      console.error('Worker response error', res.status, responseText)
+      throw new Error(responseText || `${res.status} ${res.statusText}`)
     }
-    const json: unknown = await res.json()
+    let json: unknown
+    try {
+      json = JSON.parse(responseText)
+    } catch (err) {
+      console.error('服务器返回原文:', responseText)
+      if (err instanceof SyntaxError) {
+        return {
+          name: '识别失败',
+          intro: '服务器返回格式异常',
+          facts: '',
+        }
+      }
+      throw err
+    }
     const rawChoiceJson = (json as { raw_choice_json?: string | null }).raw_choice_json ?? null
     const choices = (json as { choices?: Array<{ message?: { content?: unknown } }> }).choices ?? []
     const contentAny = choices?.[0]?.message?.content
