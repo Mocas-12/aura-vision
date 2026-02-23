@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { recognizeNearestCenterObject, type Recognition } from './utils/ai-service'
 import { useTypewriter } from './hooks/useTypewriter'
 import { initDefaults, isPro, remaining, getCount, setCount, QUOTA } from './utils/quota'
@@ -22,10 +22,168 @@ export default function App() {
   const [viewCount, setViewCount] = useState<number>(0)
   const [visitorCount, setVisitorCount] = useState<number>(1)
   const [showActivation, setShowActivation] = useState(false)
+  const resultRef = useRef<HTMLDivElement | null>(null)
+  const spacerRef = useRef<HTMLDivElement | null>(null)
+  const [autoMode, setAutoMode] = useState(true)
+  const [silenceUntil, setSilenceUntil] = useState<number>(0)
+  const lastSuccessRef = useRef<boolean>(false)
 
-  const typedName = useTypewriter(rec?.name ?? '', 15)
-  const typedIntro = useTypewriter(rec?.intro ?? '', 10)
-  const typedFacts = useTypewriter(rec?.facts ?? '', 10)
+  const [typedName, typingName] = useTypewriter(rec?.name ?? '', 15)
+  const [typedIntro, typingIntro] = useTypewriter(rec?.intro ?? '', 10)
+  const [typedFacts, typingFacts] = useTypewriter(rec?.facts ?? '', 10)
+  const streaming = typingName || typingIntro || typingFacts
+
+  const triggerRecognize = useCallback(() => {
+    if (!cameraReady) return
+    if (busy || isProcessingRef.current) return
+    if (!autoMode) return
+    if (streaming) return
+    if (Date.now() < silenceUntil) return
+    if (!isPro()) {
+      const r = remaining()
+      if (r <= 0) {
+        setShowActivation(true)
+        return
+      }
+    }
+    const v = videoRef.current
+    const c = canvasRef.current
+    if (!v || !c) {
+      setRec({ name: '未获取到画面', intro: '请检查摄像头权限或设备', facts: '' })
+      return
+    }
+    c.width = v.videoWidth
+    c.height = v.videoHeight
+    const ctx = c.getContext('2d')
+    if (!ctx) {
+      setRec({ name: '未获取到画面', intro: '渲染上下文不可用', facts: '' })
+      return
+    }
+    ctx.drawImage(v, 0, 0, c.width, c.height)
+    const side = Math.floor(Math.min(c.width, c.height) * 0.6)
+    const cx = Math.floor(c.width / 2)
+    const cy = Math.floor(c.height / 2)
+    const sx = cx - Math.floor(side / 2)
+    const sy = cy - Math.floor(side / 2)
+    const crop = document.createElement('canvas')
+    crop.width = side
+    crop.height = side
+    const cctx = crop.getContext('2d')
+    cctx?.drawImage(c, sx, sy, side, side, 0, 0, side, side)
+    const targetSize = Math.min(side, 640)
+    const out = document.createElement('canvas')
+    out.width = targetSize
+    out.height = targetSize
+    const octx = out.getContext('2d')
+    octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
+    let dataUrl: string | null = out.toDataURL('image/jpeg', 0.2)
+    dataUrl = dataUrl?.replace(/\s/g, '') ?? null
+    if (!isPro()) {
+      const next = getCount() + 1
+      setCount(next)
+      const r2 = QUOTA - next
+      if (r2 <= 0) {
+        setShowActivation(true)
+      }
+    }
+    setBusy(true)
+    setProc('fetching')
+    isProcessingRef.current = true
+    if (abortRef.current) {
+      try {
+        abortRef.current.abort()
+      } catch (err) {
+        console.warn('abort previous request error', err)
+      }
+      abortRef.current = null
+    }
+    abortRef.current = new AbortController()
+    const controller = abortRef.current
+    ;(async () => {
+      try {
+        const timeoutTag = Symbol('timeout')
+        const resultOrTimeout = await Promise.race([
+          recognizeNearestCenterObject({
+            apiKey,
+            imageDataUrl: dataUrl!,
+            signal: controller!.signal,
+          }),
+          new Promise<Recognition | symbol>((resolve) =>
+            setTimeout(() => resolve(timeoutTag), 8000),
+          ),
+        ])
+        if (resultOrTimeout === timeoutTag) {
+          console.warn('Processing Status: timeout')
+          setProc('timeout')
+          setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
+          setBusy(false)
+          isProcessingRef.current = false
+          abortRef.current?.abort()
+          abortRef.current = null
+          dataUrl = null
+          return
+        }
+        const result = resultOrTimeout as Recognition | null
+        if (result) {
+          setRec(result)
+          setProc('done')
+          lastSuccessRef.current = result.name !== '识别失败'
+          try {
+            const el = resultRef.current
+            if (el) {
+              el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+              const s = spacerRef.current
+              if (s) s.style.height = el.scrollHeight + 'px'
+            }
+          } catch { void 0 }
+          try {
+            setTimeout(() => {
+              const doc = document.documentElement
+              const top = Math.max(doc.scrollHeight, document.body.scrollHeight)
+              window.scrollTo({ top, behavior: 'smooth' })
+            }, 50)
+          } catch { void 0 }
+          if (result.name !== '识别失败') {
+            const sig = `${result.name}|${result.intro}`
+            if (sig !== lastSigRef.current) {
+              const ctx = audioCtxRef.current
+              if (ctx) {
+                const o = ctx.createOscillator()
+                const g = ctx.createGain()
+                o.type = 'sine'
+                o.frequency.setValueAtTime(880, ctx.currentTime)
+                g.gain.setValueAtTime(0, ctx.currentTime)
+                g.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01)
+                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25)
+                o.connect(g)
+                g.connect(ctx.destination)
+                o.start()
+                o.stop(ctx.currentTime + 0.25)
+              }
+              lastSigRef.current = sig
+            }
+          }
+        } else {
+          setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
+          setProc('empty')
+        }
+      } catch (e) {
+        console.error('Processing Status: error', e)
+        const name = (e as { name?: string })?.name
+        let intro = (e as { message?: string })?.message || String(e)
+        if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
+          intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
+        }
+        setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
+        setProc('error')
+      } finally {
+        setBusy(false)
+        isProcessingRef.current = false
+        abortRef.current = null
+        dataUrl = null
+      }
+    })()
+  }, [cameraReady, busy, autoMode, streaming, silenceUntil])
 
   useEffect(() => {
     const initialVideo = videoRef.current
@@ -94,150 +252,51 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const interval = window.setInterval(async () => {
-      if (!cameraReady) return
-      // 后端已使用 NVIDIA_API_KEY，不再需要前端密钥
-      if (busy || isProcessingRef.current) return
-      if (!isPro()) {
-        const r = remaining()
-        if (r <= 0) {
-          setShowActivation(true)
-          return
-        }
-      }
-      const v = videoRef.current
-      const c = canvasRef.current
-      if (!v || !c) {
-        setRec({ name: '未获取到画面', intro: '请检查摄像头权限或设备', facts: '' })
-        return
-      }
-      c.width = v.videoWidth
-      c.height = v.videoHeight
-      const ctx = c.getContext('2d')
-      if (!ctx) {
-        setRec({ name: '未获取到画面', intro: '渲染上下文不可用', facts: '' })
-        return
-      }
-      ctx.drawImage(v, 0, 0, c.width, c.height)
-      const side = Math.floor(Math.min(c.width, c.height) * 0.6)
-      const cx = Math.floor(c.width / 2)
-      const cy = Math.floor(c.height / 2)
-      const sx = cx - Math.floor(side / 2)
-      const sy = cy - Math.floor(side / 2)
-      const crop = document.createElement('canvas')
-      crop.width = side
-      crop.height = side
-      const cctx = crop.getContext('2d')
-      cctx?.drawImage(c, sx, sy, side, side, 0, 0, side, side)
-      const targetSize = Math.min(side, 640)
-      const out = document.createElement('canvas')
-      out.width = targetSize
-      out.height = targetSize
-      const octx = out.getContext('2d')
-      octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
-      let dataUrl: string | null = out.toDataURL('image/jpeg', 0.2)
-      dataUrl = dataUrl?.replace(/\s/g, '') ?? null
-      if (!isPro()) {
-        const next = getCount() + 1
-        setCount(next)
-        const r2 = QUOTA - next
-        if (r2 <= 0) {
-          setShowActivation(true)
-        }
-      }
-      setBusy(true)
-      setProc('fetching')
-      isProcessingRef.current = true
-      if (abortRef.current) {
-        try {
-          abortRef.current.abort()
-        } catch (err) {
-          console.warn('abort previous request error', err)
-        }
-        abortRef.current = null
-      }
-      abortRef.current = new AbortController()
-      try {
-        const timeoutTag = Symbol('timeout')
-        const resultOrTimeout = await Promise.race([
-          recognizeNearestCenterObject({
-            apiKey,
-            imageDataUrl: dataUrl!,
-            signal: abortRef.current.signal,
-          }),
-          new Promise<Recognition | symbol>((resolve) =>
-            setTimeout(() => resolve(timeoutTag), 8000),
-          ),
-        ])
-        if (resultOrTimeout === timeoutTag) {
-          console.warn('Processing Status: timeout')
-          setProc('timeout')
-          setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
-          setBusy(false)
-          isProcessingRef.current = false
-          abortRef.current?.abort()
-          abortRef.current = null
-          dataUrl = null
-          return
-        }
-        const result = resultOrTimeout as Recognition | null
-        if (result) {
-          setRec(result)
-          setProc('done')
-          if (result.name !== '识别失败') {
-            const sig = `${result.name}|${result.intro}`
-            if (sig !== lastSigRef.current) {
-              const ctx = audioCtxRef.current
-              if (ctx) {
-                const o = ctx.createOscillator()
-                const g = ctx.createGain()
-                o.type = 'sine'
-                o.frequency.setValueAtTime(880, ctx.currentTime)
-                g.gain.setValueAtTime(0, ctx.currentTime)
-                g.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01)
-                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25)
-                o.connect(g)
-                g.connect(ctx.destination)
-                o.start()
-                o.stop(ctx.currentTime + 0.25)
-              }
-              lastSigRef.current = sig
-            }
-          }
-        } else {
-          setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
-          setProc('empty')
-        }
-      } catch (e) {
-        console.error('Processing Status: error', e)
-        const name = (e as { name?: string })?.name
-        let intro = (e as { message?: string })?.message || String(e)
-        if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
-          intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
-        }
-        setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
-        setProc('error')
-      } finally {
-        setBusy(false)
-        isProcessingRef.current = false
-        abortRef.current = null
-        dataUrl = null
-      }
-    }, 5000)
+    const interval = window.setInterval(() => {
+      triggerRecognize()
+    }, 10000)
     return () => window.clearInterval(interval)
-  }, [cameraReady, apiKey, busy])
+  }, [triggerRecognize])
+
+  useEffect(() => {
+    if (proc !== 'done') return
+    try {
+      const el = resultRef.current
+      if (el) {
+        setTimeout(() => {
+          el.scrollTop = el.scrollHeight
+          const s = spacerRef.current
+          if (s) s.style.height = el.scrollHeight + 'px'
+        }, 50)
+      }
+    } catch { void 0 }
+    try {
+      setTimeout(() => {
+        const doc = document.documentElement
+        const top = Math.max(doc.scrollHeight, document.body.scrollHeight)
+        window.scrollTo({ top, behavior: 'smooth' })
+      }, 50)
+    } catch { void 0 }
+  }, [typedIntro, typedFacts, proc])
+
+  useEffect(() => {
+    if (proc === 'done' && !streaming && lastSuccessRef.current) {
+      setSilenceUntil(Date.now() + 20000)
+    }
+  }, [proc, streaming])
 
   return (
-    <div className="w-full min-h-screen relative flex flex-col">
-      <video
-        ref={videoRef}
-        className="absolute inset-0 w-full h-full object-cover"
-        playsInline
-        muted
-      />
-      <canvas ref={canvasRef} className="hidden" />
-
-      <div className="scan-frame bg-white/10" />
+    <div className="w-full min-h-screen relative flex flex-col" style={{ paddingBottom: '100px' }}>
+      <div className="relative w-full" style={{ height: '60vh' }}>
+        <video
+          ref={videoRef}
+          className="absolute inset-0 w-full h-full object-cover"
+          playsInline
+          muted
+        />
+        <canvas ref={canvasRef} className="hidden" />
+        {busy && <div className="scan-line absolute inset-0 pointer-events-none" />}
+      </div>
 
       {cameraError && (
         <div className="absolute inset-0 z-40 flex items-center justify-center">
@@ -256,11 +315,28 @@ export default function App() {
         </div>
       )}
 
-      <div className="absolute left-0 right-0 bottom-28 z-20 p-4 pb-6">
+      <div className="w-full p-4 pb-6">
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-white/60">
-              Status: {busy ? 'Busy' : 'Ready'} | Build: {buildTimeRef.current} -proxy-try · {proc}
+              Status: {streaming ? 'AI 正在详细介绍中...' : busy ? 'Busy' : 'Ready'} | Build: {buildTimeRef.current} -proxy-try · {proc}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className={`px-3 py-1 rounded-md ${autoMode ? 'bg-white/20' : 'bg-white/10'}`}
+                onClick={() => setAutoMode((v) => !v)}
+              >
+                {autoMode ? '自动识别：开' : '自动识别：关'}
+              </button>
+              {!autoMode && (
+                <button
+                  className="px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500"
+                  onClick={() => triggerRecognize()}
+                  disabled={busy || isProcessingRef.current}
+                >
+                  手动识别
+                </button>
+              )}
             </div>
           </div>
           {apiWarn && (
@@ -293,17 +369,30 @@ export default function App() {
               </button>
             </div>
           )}
-          <div className="mt-2">
+          <div
+            className="mt-2 overflow-y-auto"
+            style={{ paddingBottom: '100px', WebkitOverflowScrolling: 'touch' }}
+            ref={resultRef}
+          >
             <div className="text-2xl font-semibold">{typedName || '等待识别…'}</div>
-          <div className="mt-2 text-sm leading-relaxed text-white/80 whitespace-pre-wrap max-h-40 overflow-y-auto">
+            <div
+              className="mt-2 text-sm text-white/80 whitespace-pre-wrap break-all"
+              style={{ lineHeight: 1.6 }}
+            >
               {busy ? 'AI 正在深度思考中，请稍候...' : typedIntro}
             </div>
-          {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
-              <div className="mt-3 text-sm leading-relaxed text-white/80 whitespace-pre-wrap max-h-32 overflow-y-auto">{typedFacts}</div>
+            {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
+              <div
+                className="mt-3 text-sm text白色/80 whitespace-pre-wrap break-all"
+                style={{ lineHeight: 1.6 }}
+              >
+                {typedFacts}
+              </div>
             )}
           </div>
         </div>
       </div>
+      <div ref={spacerRef} style={{ height: 0 }} />
       <div className="relative z-10 w-full mt-auto pt-5 mb-10">
         <div
           className="glass mx-auto rounded-2xl px-4 py-2 text-center flex flex-col items-center gap-2"
