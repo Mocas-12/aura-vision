@@ -379,20 +379,20 @@ export default function App() {
           )}
           <div
             className="mt-2 scrollbox cyber-panel"
-            style={{ height: 'auto', maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto', padding: '15px' }}
+            style={{ height: 'auto', minHeight: '150px', maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto', padding: '15px' }}
             ref={resultRef}
           >
             <div className="text-2xl font-semibold cyber-title">{typedName || '等待识别…'}</div>
             <div
               className="mt-2 text-sm whitespace-pre-wrap break-all cyber-title"
-              style={{ lineHeight: 1.6 }}
+              style={{ lineHeight: 1.6, fontSize: '1.1rem' }}
             >
               {busy ? 'AI 正在深度思考中，请稍候...' : typedIntro}
             </div>
             {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
               <div
                 className="mt-3 text-sm cyber-text whitespace-pre-wrap break-all"
-                style={{ lineHeight: 1.6 }}
+                style={{ lineHeight: 1.6, fontSize: '1.1rem' }}
               >
                 {typedFacts}
               </div>
