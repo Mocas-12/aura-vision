@@ -17,17 +17,20 @@ export async function recognizeNearestCenterObject(opts: {
     prompt: opts.prompt ?? '请用中文总结图片内容或说明文大意，最多30字。',
   }
   try {
+    const headersUsed = { 'Content-Type': 'application/json' }
     const res = await fetch(url, {
       method: 'POST',
       mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: headersUsed,
       body: JSON.stringify(requestBody),
       signal: opts.signal,
     })
     const responseText = await res.text()
     console.log('Worker Raw Response:', responseText)
+    if (res.status === 404) {
+      const debugHeaders = { ...headersUsed, Origin: window.location.origin, UserAgent: navigator.userAgent }
+      console.log('Request Headers (debug):', debugHeaders)
+    }
     if (!res.ok) {
       console.error('Worker response error', res.status, responseText)
       throw new Error(responseText || `${res.status} ${res.statusText}`)
