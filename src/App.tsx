@@ -401,13 +401,13 @@ export default function App() {
           <div className="text-sm cyber-text flex items-center justify-center gap-4">
             <span id="busuanzi_container_page_pv" className="flex items-center gap-1" style={{ display: 'inline' }}>
               <span>👁️</span>
-              <span>总访问量</span>
+              <span>总访问量：</span>
               <span id="busuanzi_value_page_pv" style={{ fontFamily: 'monospace' }}>加载中...</span>
             </span>
             <span className="sep" id="busuanzi_sep" style={{ display: 'none' }}>|</span>
             <span id="av_container_project_uv" className="flex items-center gap-1" style={{ display: 'inline' }}>
               <span>👤</span>
-              <span>本设备浏览次数</span>
+              <span>本设备浏览次数：</span>
               <span id="av_project_uv_value" style={{ fontFamily: 'monospace' }}>{projectVisitor}</span>
             </span>
           </div>
