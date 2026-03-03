@@ -19,8 +19,6 @@ export default function App() {
   const isProcessingRef = useRef<boolean>(false)
   const abortRef = useRef<AbortController | null>(null)
   const [apiWarn, setApiWarn] = useState<string | null>(null)
-  const [viewCount, setViewCount] = useState<number>(0)
-  const [visitorCount, setVisitorCount] = useState<number>(1)
   const [showActivation, setShowActivation] = useState(false)
   const resultRef = useRef<HTMLDivElement | null>(null)
   const [autoMode, setAutoMode] = useState(true)
@@ -227,19 +225,6 @@ export default function App() {
     }
   }, [])
 
-  useEffect(() => {
-    const k1 = 'aura-vision-views'
-    const v = Number(localStorage.getItem(k1) || '0') + 1
-    localStorage.setItem(k1, String(v))
-    setViewCount(v)
-    const k2 = 'aura-vision-visitor-id'
-    let id = localStorage.getItem(k2)
-    if (!id) {
-      id = Math.random().toString(36).slice(2)
-      localStorage.setItem(k2, id)
-    }
-    setVisitorCount(1)
-  }, [])
 
   useEffect(() => {
     initDefaults()
@@ -407,13 +392,14 @@ export default function App() {
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', width: 'fit-content', maxWidth: '90%' }}
         >
           <div className="text-sm cyber-text flex items-center justify-center gap-4">
-            <span className="flex items-center gap-1">
+            <span id="busuanzi_container_site_pv" className="flex items-center gap-1" style={{ display: 'inline' }}>
               <span>👁️</span>
-              <span style={{ fontFamily: 'monospace' }}>{viewCount}</span>
+              <span id="busuanzi_value_site_pv" style={{ fontFamily: 'monospace' }}>加载中...</span>
             </span>
-            <span className="flex items-center gap-1">
+            <span className="sep" id="busuanzi_sep" style={{ display: 'none' }}>|</span>
+            <span id="busuanzi_container_site_uv" className="flex items-center gap-1" style={{ display: 'inline' }}>
               <span>👤</span>
-              <span style={{ fontFamily: 'monospace' }}>{visitorCount}</span>
+              <span id="busuanzi_value_site_uv" style={{ fontFamily: 'monospace' }}>加载中...</span>
             </span>
           </div>
           <div className="text-sm cyber-text flex items-center justify-center gap-[10px] overflow-hidden flex-nowrap">
