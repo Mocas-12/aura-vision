@@ -406,6 +406,7 @@ export default function App() {
             <span className="sep" id="busuanzi_sep" style={{ display: 'none' }}>|</span>
             <span id="av_container_project_uv" className="flex items-center gap-1" style={{ display: 'inline' }}>
               <span>👤</span>
+              <span>本设备浏览次数</span>
               <span id="av_project_uv_value" style={{ fontFamily: 'monospace' }}>{projectVisitor}</span>
             </span>
           </div>
