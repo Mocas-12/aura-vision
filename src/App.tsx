@@ -3,6 +3,7 @@ import { recognizeNearestCenterObject, type Recognition } from './utils/ai-servi
 import { useTypewriter } from './hooks/useTypewriter'
 import { initDefaults, isPro, remaining, getCount, setCount, QUOTA } from './utils/quota'
 import ActivationModal from './components/ActivationModal'
+import { initProjectVisitor } from './utils/visitor'
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -26,6 +27,7 @@ export default function App() {
   const lastSuccessRef = useRef<boolean>(false)
   const [manualLoading, setManualLoading] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [projectVisitor, setProjectVisitor] = useState<number>(0)
 
   const [typedName, typingName] = useTypewriter(rec?.name ?? '', 15)
   const [typedIntro, typingIntro] = useTypewriter(rec?.intro ?? '', 10)
@@ -225,6 +227,11 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    const n = initProjectVisitor()
+    setProjectVisitor(n)
+  }, [])
+
 
   useEffect(() => {
     initDefaults()
@@ -392,14 +399,14 @@ export default function App() {
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', width: 'fit-content', maxWidth: '90%' }}
         >
           <div className="text-sm cyber-text flex items-center justify-center gap-4">
-            <span id="busuanzi_container_site_pv" className="flex items-center gap-1" style={{ display: 'inline' }}>
+            <span id="busuanzi_container_page_pv" className="flex items-center gap-1" style={{ display: 'inline' }}>
               <span>👁️</span>
-              <span id="busuanzi_value_site_pv" style={{ fontFamily: 'monospace' }}>加载中...</span>
+              <span id="busuanzi_value_page_pv" style={{ fontFamily: 'monospace' }}>加载中...</span>
             </span>
             <span className="sep" id="busuanzi_sep" style={{ display: 'none' }}>|</span>
-            <span id="busuanzi_container_site_uv" className="flex items-center gap-1" style={{ display: 'inline' }}>
+            <span id="av_container_project_uv" className="flex items-center gap-1" style={{ display: 'inline' }}>
               <span>👤</span>
-              <span id="busuanzi_value_site_uv" style={{ fontFamily: 'monospace' }}>加载中...</span>
+              <span id="av_project_uv_value" style={{ fontFamily: 'monospace' }}>{projectVisitor}</span>
             </span>
           </div>
           <div className="text-sm cyber-text flex items-center justify-center gap-[10px] overflow-hidden flex-nowrap">
