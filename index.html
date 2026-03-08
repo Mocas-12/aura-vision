@@ -55,7 +55,27 @@
         }
         setTimeout(reloadBusuanzi,1500);
         setTimeout(reloadBusuanzi,3500);
-        setTimeout(finalizeFallback,5000);
+        window.BusuanziCallback=function(d){
+          try{
+            var pvV=document.getElementById('busuanzi_value_site_pv');
+            if(pvV&&d&&typeof d.site_pv!=='undefined'){
+              pvV.textContent=String(d.site_pv);
+              ensureVisible();updateSep();
+            }
+          }catch(e){}
+        };
+        function jsonpPull(){
+          try{
+            var s=document.createElement('script');
+            s.src='https://busuanzi.ibruce.info/busuanzi?jsonpCallback=BusuanziCallback&_r='+(Date.now());
+            s.async=true;
+            document.head.appendChild(s);
+          }catch(e){}
+        }
+        setTimeout(jsonpPull,800);
+        setTimeout(jsonpPull,2800);
+        setTimeout(jsonpPull,6000);
+        setTimeout(finalizeFallback,10000);
       })();
     </script>
   </body>
