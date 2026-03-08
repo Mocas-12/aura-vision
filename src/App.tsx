@@ -399,10 +399,10 @@ export default function App() {
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', width: 'fit-content', maxWidth: '90%' }}
         >
           <div className="text-sm cyber-text flex items-center justify-center gap-4">
-            <span id="busuanzi_container_page_pv" className="flex items-center gap-1" style={{ display: 'inline' }}>
+            <span id="busuanzi_container_site_pv" className="flex items-center gap-1" style={{ display: 'inline' }}>
               <span>👁️</span>
               <span>总访问量：</span>
-              <span id="busuanzi_value_page_pv" style={{ fontFamily: 'monospace' }}>加载中...</span>
+              <span id="busuanzi_value_site_pv" style={{ fontFamily: 'monospace' }}>加载中...</span>
             </span>
             <span className="sep" id="busuanzi_sep" style={{ display: 'none' }}>|</span>
             <span id="av_container_project_uv" className="flex items-center gap-1" style={{ display: 'inline' }}>

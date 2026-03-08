@@ -14,8 +14,8 @@
       (function(){
         function visible(el){if(!el)return false;const s=getComputedStyle(el);return s.display!=='none'&&s.visibility!=='hidden'}
         function ensureVisible(){
-          const pvC=document.getElementById('busuanzi_container_page_pv');
-          const pvV=document.getElementById('busuanzi_value_page_pv');
+          const pvC=document.getElementById('busuanzi_container_site_pv');
+          const pvV=document.getElementById('busuanzi_value_site_pv');
           const uvC=document.getElementById('av_container_project_uv');
           const uvV=document.getElementById('av_project_uv_value');
           if(pvC){pvC.style.display='inline'}
@@ -24,17 +24,17 @@
           if(uvV&&(!uvV.textContent||uvV.textContent.trim()==='')){uvV.textContent='加载中...'}
         }
         function finalizeFallback(){
-          const pvV=document.getElementById('busuanzi_value_page_pv');
+          const pvV=document.getElementById('busuanzi_value_site_pv');
           if(pvV&&pvV.textContent==='加载中...'){pvV.textContent='暂不可用'}
         }
         function updateSep(){
-          const pv=document.getElementById('busuanzi_container_page_pv');
+          const pv=document.getElementById('busuanzi_container_site_pv');
           const uv=document.getElementById('av_container_project_uv');
           const sep=document.getElementById('busuanzi_sep');
           if(!sep)return;
           sep.style.display = (visible(pv)&&visible(uv)) ? 'inline' : 'none';
         }
-        const pv=document.getElementById('busuanzi_container_page_pv');
+        const pv=document.getElementById('busuanzi_container_site_pv');
         const uv=document.getElementById('av_container_project_uv');
         const obsCfg={attributes:true,attributeFilter:['style','class']};
         if(pv){new MutationObserver(function(){ensureVisible();updateSep()}).observe(pv,obsCfg)}
@@ -42,6 +42,19 @@
         document.addEventListener('DOMContentLoaded',function(){ensureVisible();updateSep()});
         window.addEventListener('load',function(){ensureVisible();updateSep()});
         setTimeout(function(){ensureVisible();updateSep()},1200);
+        function reloadBusuanzi(){
+          try{
+            var pvV=document.getElementById('busuanzi_value_site_pv');
+            if(pvV&&pvV.textContent&&pvV.textContent!=='加载中...'){return}
+            var old=document.querySelector('script[src*="busuanzi.pure.mini.js"]');
+            var s=document.createElement('script');
+            s.src='https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js?_r='+(Date.now());
+            s.async=true;
+            (old?old.parentNode:document.head).appendChild(s);
+          }catch(e){}
+        }
+        setTimeout(reloadBusuanzi,1500);
+        setTimeout(reloadBusuanzi,3500);
         setTimeout(finalizeFallback,5000);
       })();
     </script>
