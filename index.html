@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/aura-vision/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aura-Vision | 寰宇视界</title>
+    <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <script type="module" crossorigin src="/aura-vision/assets/index-BwqJShyw.js"></script>
+    <link rel="stylesheet" crossorigin href="/aura-vision/assets/index-DYkAHZYi.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      (function(){
+        function visible(el){if(!el)return false;const s=getComputedStyle(el);return s.display!=='none'&&s.visibility!=='hidden'}
+        function ensureVisible(){
+          const pvC=document.getElementById('busuanzi_container_site_pv');
+          const pvV=document.getElementById('busuanzi_value_site_pv');
+          const uvC=document.getElementById('av_container_project_uv');
+          const uvV=document.getElementById('av_project_uv_value');
+          if(pvC){pvC.style.display='inline'}
+          if(uvC){uvC.style.display='inline'}
+          if(pvV&&(!pvV.textContent||pvV.textContent.trim()==='')){pvV.textContent='加载中...'}
+          if(uvV&&(!uvV.textContent||uvV.textContent.trim()==='')){uvV.textContent='加载中...'}
+        }
+        function finalizeFallback(){
+          const pvV=document.getElementById('busuanzi_value_site_pv');
+          if(pvV&&pvV.textContent==='加载中...'){pvV.textContent='暂不可用'}
+        }
+        function updateSep(){
+          const pv=document.getElementById('busuanzi_container_site_pv');
+          const uv=document.getElementById('av_container_project_uv');
+          const sep=document.getElementById('busuanzi_sep');
+          if(!sep)return;
+          sep.style.display = (visible(pv)&&visible(uv)) ? 'inline' : 'none';
+        }
+        const pv=document.getElementById('busuanzi_container_site_pv');
+        const uv=document.getElementById('av_container_project_uv');
+        const obsCfg={attributes:true,attributeFilter:['style','class']};
+        if(pv){new MutationObserver(function(){ensureVisible();updateSep()}).observe(pv,obsCfg)}
+        if(uv){new MutationObserver(function(){ensureVisible();updateSep()}).observe(uv,obsCfg)}
+        document.addEventListener('DOMContentLoaded',function(){ensureVisible();updateSep()});
+        window.addEventListener('load',function(){ensureVisible();updateSep()});
+        setTimeout(function(){ensureVisible();updateSep()},1200);
+        const WORKER_BASE='https://square-bread-b238.a18577y.workers.dev';
+        async function statsInc(){
+          try{
+            await fetch(WORKER_BASE+'/stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({site:'aura-vision'}),mode:'cors'});
+          }catch(e){}
+        }
+        async function statsGet(){
+          try{
+            const r=await fetch(WORKER_BASE+'/stats',{method:'GET',mode:'cors'});
+            if(!r.ok) throw new Error(String(r.status));
+            const t=await r.text();
+            const j=JSON.parse(t);
+            const v=document.getElementById('busuanzi_value_site_pv');
+            if(v&&typeof j.site_pv!=='undefined'){v.textContent=String(j.site_pv);ensureVisible();updateSep();return true}
+          }catch(e){}
+          return false
+        }
+        (async function(){await statsInc();const ok=await statsGet();if(!ok){reloadBusuanzi();jsonpPull()}})();
+        function reloadBusuanzi(){
+          try{
+            var pvV=document.getElementById('busuanzi_value_site_pv');
+            if(pvV&&pvV.textContent&&pvV.textContent!=='加载中...'){return}
+            var old=document.querySelector('script[src*="busuanzi.pure.mini.js"]');
+            var s=document.createElement('script');
+            s.src='https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js?_r='+(Date.now());
+            s.async=true;
+            (old?old.parentNode:document.head).appendChild(s);
+          }catch(e){}
+        }
+        setTimeout(reloadBusuanzi,1500);
+        setTimeout(reloadBusuanzi,3500);
+        window.BusuanziCallback=function(d){
+          try{
+            var pvV=document.getElementById('busuanzi_value_site_pv');
+            if(pvV&&d&&typeof d.site_pv!=='undefined'){
+              pvV.textContent=String(d.site_pv);
+              ensureVisible();updateSep();
+            }
+          }catch(e){}
+        };
+        function jsonpPull(){
+          try{
+            var s=document.createElement('script');
+            s.src='https://busuanzi.ibruce.info/busuanzi?jsonpCallback=BusuanziCallback&_r='+(Date.now());
+            s.async=true;
+            document.head.appendChild(s);
+          }catch(e){}
+        }
+        setTimeout(jsonpPull,800);
+        setTimeout(jsonpPull,2800);
+        setTimeout(jsonpPull,6000);
+        setTimeout(finalizeFallback,10000);
+      })();
+    </script>
+  </body>
+</html>
