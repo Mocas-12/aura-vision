@@ -42,6 +42,24 @@
         document.addEventListener('DOMContentLoaded',function(){ensureVisible();updateSep()});
         window.addEventListener('load',function(){ensureVisible();updateSep()});
         setTimeout(function(){ensureVisible();updateSep()},1200);
+        const WORKER_BASE='https://square-bread-b238.a18577y.workers.dev';
+        async function statsInc(){
+          try{
+            await fetch(WORKER_BASE+'/stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({site:'aura-vision'}),mode:'cors'});
+          }catch(e){}
+        }
+        async function statsGet(){
+          try{
+            const r=await fetch(WORKER_BASE+'/stats',{method:'GET',mode:'cors'});
+            if(!r.ok) throw new Error(String(r.status));
+            const t=await r.text();
+            const j=JSON.parse(t);
+            const v=document.getElementById('busuanzi_value_site_pv');
+            if(v&&typeof j.site_pv!=='undefined'){v.textContent=String(j.site_pv);ensureVisible();updateSep();return true}
+          }catch(e){}
+          return false
+        }
+        (async function(){await statsInc();const ok=await statsGet();if(!ok){reloadBusuanzi();jsonpPull()}})();
         function reloadBusuanzi(){
           try{
             var pvV=document.getElementById('busuanzi_value_site_pv');
