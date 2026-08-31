@@ -273,6 +273,10 @@ export default function App() {
     }
   }, [proc, streaming])
 
+  useEffect(() => {
+    console.log('[Aura-Vision] build:', buildTimeRef.current)
+  }, [])
+
   return (
     <div className="w-full min-h-screen relative flex flex-col" style={{ paddingBottom: '100px' }}>
       <div className="relative w-full" style={{ height: '60vh' }}>
@@ -283,17 +287,18 @@ export default function App() {
           muted
         />
         <canvas ref={canvasRef} className="hidden" />
+        <div className={`scan-frame ${cameraError ? 'is-error' : busy ? 'is-busy' : 'is-idle'}`} />
         {busy && <div className="scan-line absolute inset-0 pointer-events-none" />}
       </div>
 
       {cameraError && (
         <div className="absolute inset-0 z-40 flex items-center justify-center">
-          <div className="glass max-w-[560px] w-[92%] rounded-2xl p-6">
+          <div className="glass max-w-[560px] w-[92%] rounded-3xl p-6">
             <h3 className="text-lg font-semibold">摄像头错误</h3>
             <p className="mt-2 text-sm text-white/80">{cameraError}</p>
             <div className="mt-4 flex gap-2">
               <button
-                className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20"
+                className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20"
                 onClick={() => window.location.reload()}
               >
                 重试
@@ -304,10 +309,10 @@ export default function App() {
       )}
 
       <div className="w-full p-4 pb-6">
-        <div className="glass rounded-2xl p-4">
+        <div className="glass rounded-3xl p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm cyber-soft">
-              Status: {streaming ? 'AI 正在详细介绍中...' : busy ? 'Busy' : 'Ready'} | Build: {buildTimeRef.current} -proxy-try · {proc}
+              {streaming ? 'AI 正在详细介绍中…' : busy ? '识别中…' : cameraReady ? '待机' : '摄像头启动中…'}
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -347,7 +352,7 @@ export default function App() {
           {rec?.name === '识别失败' && typeof rec?.intro === 'string' && rec.intro.includes('识别受阻') && (
             <div className="mt-3 flex gap-2">
               <button
-                className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20"
+                className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20"
                 onClick={() => {
                   const text = `${rec?.intro ?? ''}\n${rec?.facts ?? ''}`
                   navigator.clipboard?.writeText(text).catch(() => {})
@@ -356,7 +361,7 @@ export default function App() {
                 复制诊断信息
               </button>
               <button
-                className="px-3 py-2 rounded-md bg-white/10 hover:bg白色/20"
+                className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20"
                 onClick={() => {
                   try {
                     window.open(window.location.href, '_blank')
@@ -374,12 +379,22 @@ export default function App() {
             style={{ height: 'auto', minHeight: '150px', maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto', padding: '15px' }}
             ref={resultRef}
           >
-            <div className="text-2xl font-semibold cyber-title">{typedName || '等待识别…'}</div>
+            <div className="text-2xl font-semibold grad-title">{typedName || '等待识别…'}</div>
+            <div className="grad-divider mt-2" />
             <div
-              className="mt-2 text-sm whitespace-pre-wrap break-all cyber-title"
+              className="mt-2 text-sm whitespace-pre-wrap break-all cyber-body"
               style={{ lineHeight: 1.6, fontSize: '1.1rem' }}
             >
-              {busy ? 'AI 正在深度思考中，请稍候...' : typedIntro}
+              {busy ? (
+                <span className="thinking">
+                  AI 正在深度思考中
+                  <span className="dots">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                </span>
+              ) : typedIntro}
             </div>
             {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
               <div
@@ -395,7 +410,7 @@ export default function App() {
       
       <div className="relative z-10 w-full mt-auto pt-5 mb-10">
         <div
-          className="glass mx-auto rounded-2xl px-4 py-2 text-center flex flex-col items-center gap-2"
+          className="glass mx-auto rounded-3xl px-4 py-2 text-center flex flex-col items-center gap-2"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', width: 'fit-content', maxWidth: '90%' }}
         >
           <div className="text-sm cyber-text flex items-center justify-center gap-4">

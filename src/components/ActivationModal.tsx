@@ -14,24 +14,24 @@ export default function ActivationModal({ open, onClose, onActivated }: Props) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="glass w-[92%] max-w-[520px] rounded-2xl p-6">
+      <div className="glass w-[92%] max-w-[520px] rounded-3xl p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">额度已用尽</h2>
-          <button className="px-3 py-1 rounded-md bg-white/10 hover:bg-white/20" onClick={onClose}>
+          <button className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20" onClick={onClose}>
             关闭
           </button>
         </div>
         <p className="mt-2 text-sm text-white/80">您已达到免费识别次数。请输入激活码以永久解锁使用。</p>
         <div className="mt-4">
           <input
-            className="w-full rounded-md bg-white/10 px-3 py-2 outline-none"
+            className="w-full rounded-xl bg-white/10 px-3 py-2 outline-none"
             placeholder="输入激活码"
             value={code}
             onChange={(e) => setCode(e.target.value)}
           />
           <div className="mt-3 flex gap-2">
             <button
-              className="px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-500"
+              className="px-3 py-2 rounded-full bg-blue-600 hover:bg-blue-500"
               disabled={loading}
               onClick={() => {
                 setError(null)
@@ -51,7 +51,7 @@ export default function ActivationModal({ open, onClose, onActivated }: Props) {
               {loading ? '激活中…' : '激活'}
             </button>
             <button
-              className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20"
+              className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20"
               onClick={() => {
                 try {
                   window.open('https://mbd.pub/o/bread/mbd-YZWblZZpZQ==', '_blank')
