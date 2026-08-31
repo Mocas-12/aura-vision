@@ -310,25 +310,32 @@ export default function App() {
 
       <div className="w-full p-4 pb-6">
         <div className="glass rounded-3xl p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-y-2">
             <div className="text-sm cyber-soft">
               {streaming ? 'AI 正在详细介绍中…' : busy ? '识别中…' : cameraReady ? '待机' : '摄像头启动中…'}
             </div>
             <div className="flex items-center gap-3">
-              <button
-                className="action-btn px-3 py-1"
-                onClick={() => {
-                  const next = !autoMode
-                  setAutoMode(next)
-                  setToastMsg(next ? '已开启自动模式：每 5 秒识别一次' : '已切换为手动模式：请点击按钮触发识别')
-                  window.setTimeout(() => setToastMsg(null), 2000)
-                }}
-              >
-                {autoMode ? '自动识别：开' : '自动识别：关'}
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm cyber-soft">自动识别</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={autoMode}
+                  aria-label="自动识别开关"
+                  className={`toggle-switch ${autoMode ? 'is-on' : ''}`}
+                  onClick={() => {
+                    const next = !autoMode
+                    setAutoMode(next)
+                    setToastMsg(next ? '已开启自动模式：每 5 秒识别一次' : '已切换为手动模式：请点击按钮触发识别')
+                    window.setTimeout(() => setToastMsg(null), 2000)
+                  }}
+                >
+                  <span className="toggle-knob" />
+                </button>
+              </div>
               {!autoMode && (
                 <button
-                  className="action-btn px-3 py-1"
+                  className="action-btn px-4 py-1"
                   onClick={async () => {
                     setManualLoading(true)
                     try {
@@ -339,7 +346,7 @@ export default function App() {
                   }}
                   disabled={manualLoading || busy || isProcessingRef.current}
                 >
-                  {manualLoading || busy || isProcessingRef.current ? '识别中...' : '手动识别'}
+                  {manualLoading || busy || isProcessingRef.current ? '识别中…' : '手动识别'}
                 </button>
               )}
             </div>
