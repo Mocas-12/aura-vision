@@ -2,9 +2,9 @@
 
 <img src="public/favicon.svg" width="96" alt="Aura-Vision Logo" />
 
-# 寰宇视界 · Aura‑Vision
+# Aura‑Vision (寰宇视界)
 
-**极简、硬核的 AI 视觉感知终端 —— 赋予手机「看透万物」的能力**
+**A minimal, hardcore AI visual perception terminal — giving your phone the ability to "see through everything"**
 
 [![Deploy to GitHub Pages](https://github.com/Mocas-12/aura-vision/actions/workflows/deploy.yml/badge.svg)](https://github.com/Mocas-12/aura-vision/actions/workflows/deploy.yml)
 [![React 19](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev)
@@ -12,93 +12,93 @@
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 
-**[🌐 在线体验（GitHub Pages）](https://mocas-12.github.io/aura-vision/)**
+**[🌐 Live Preview (GitHub Pages)](https://mocas-12.github.io/aura-vision/)**
 
-*打开页面 → 允许摄像头 → 对准任意物体，每 5 秒自动识别一次*
+**English** | [简体中文](./README.zh-CN.md)
 
-作者 **Unlimited Box** · [📧 a18577y@gmail.com](mailto:a18577y@gmail.com) · [GitHub @Mocas-12](https://github.com/Mocas-12)
+*Open the page → allow camera access → point at any object; recognition runs automatically every 5 seconds*
 
 </div>
 
 ---
 
-## 📖 目录
+## 📖 Table of Contents
 
-- [功能特性](#-功能特性)
-- [界面设计](#-界面设计)
-- [工作原理](#-工作原理)
-- [项目结构](#-项目结构)
-- [快速开始](#-快速开始)
-- [配置说明](#-配置说明)
-- [接口说明](#-接口说明)
-- [额度与激活](#-额度与激活)
-- [常见问题](#-常见问题)
-- [隐私与安全](#-隐私与安全)
-- [许可证](#-许可证)
+- [Features](#-features)
+- [UI Design](#-ui-design)
+- [How It Works](#-how-it-works)
+- [Project Structure](#-project-structure)
+- [Quick Start](#-quick-start)
+- [Configuration](#-configuration)
+- [API Reference](#-api-reference)
+- [Quota & Activation](#-quota--activation)
+- [FAQ](#-faq)
+- [Privacy & Security](#-privacy--security)
+- [License](#-license)
 
-## ✨ 功能特性
+## ✨ Features
 
-- 🎯 **智能识别**：基于 NVIDIA 多模态视觉模型（llama‑3.2‑11b‑vision‑instruct），对画面中心物体输出中文「名称 + 介绍」，支持多语言包装文字
-- 🔄 **双识别模式**：自动模式每 5 秒识别一次（成功后静默 5 秒，避免打断阅读）；手动模式点击按钮即识别，可随时打断上一次请求
-- ⌨️ **打字机呈现**：识别结果以渐变发光标题 + 打字机动画逐字输出，结果区自动滚动到底部
-- 🔊 **完成提示音**：识别成功播放短促提示音（可静音场景下自动降级）
-- 📶 **状态与诊断**：模式切换 Toast 提示、识别中思考动画、8 秒超时保护、失败诊断信息一键复制
-- 👁️ **访问统计**：站点总访问量（不蒜子 + Worker 双通道）+ 本设备浏览次数
-- 🔐 **额度系统**：本地免费额度计数，激活码永久解锁，全程无需账号
+- 🎯 **Smart Recognition**: Powered by the NVIDIA multimodal vision model (llama‑3.2‑11b‑vision‑instruct), outputs a Chinese "name + introduction" for the object at the center of the frame; handles multilingual packaging text
+- 🔄 **Dual Recognition Modes**: Auto mode recognizes every 5 seconds (with a 5-second quiet period after success to avoid interrupting reading); manual mode triggers on button click and can interrupt the previous request at any time
+- ⌨️ **Typewriter Presentation**: Results render with a gradient glowing title + character-by-character typewriter animation, and the result panel auto-scrolls to the bottom
+- 🔊 **Completion Sound**: Plays a short beep on successful recognition (auto-degrades in muted scenarios)
+- 📶 **Status & Diagnostics**: Mode-switch toast, thinking animation while recognizing, 8-second timeout guard, one-click copy of failure diagnostics
+- 👁️ **Visit Stats**: Total site page views (busuanzi + Worker dual channel) + per-device view count
+- 🔐 **Quota System**: Local free-quota counting, permanent unlock via activation code, no account required
 
-## 🎨 界面设计
+## 🎨 UI Design
 
-| 元素 | 设计 |
+| Element | Design |
 | --- | --- |
-| 取景框 | 四角括号 + 中心虚线对焦环；待机青色、识别中呼吸发光、摄像头异常转红 |
-| 结果面板 | 深蓝渐变 + 细网格底纹 + 霓虹描边 + 四角 L 型装饰 |
-| 标题排版 | 青→蓝→紫渐变发光标题 + 渐变分隔线 + 柔白正文 |
-| 按钮 | 胶囊形描边，hover 上浮、按压回弹微动效 |
-| 背景 | 深蓝黑渐变 + 青/紫极光光晕，营造纵深 |
-| 动效 | 扫描线滑过、思考省略号、Toast 滑入；尊重系统「减弱动态效果」设置 |
+| Viewfinder | Corner brackets + center dashed focus ring; cyan on standby, breathing glow while recognizing, turns red on camera error |
+| Result panel | Deep-blue gradient + fine grid texture + neon border + four L-shaped corner decorations |
+| Title typography | Cyan→blue→purple gradient glowing title + gradient divider + soft-white body text |
+| Buttons | Capsule-shaped outlines with hover-lift and press-rebound micro-interactions |
+| Background | Deep blue-black gradient + cyan/purple aurora glow for depth |
+| Motion | Scan-line sweep, thinking ellipsis, toast slide-in; respects the system "reduce motion" setting |
 
-## 🧠 工作原理
+## 🧠 How It Works
 
 ```mermaid
 flowchart LR
-    A[📱 摄像头取景] --> B[✂️ 中心裁剪与压缩<br/>JPEG · 最长边 640px]
-    B --> C[☁️ Cloudflare Worker<br/>转发与安全限制]
-    C --> D[🧠 NVIDIA 多模态模型<br/>llama-3.2-11b-vision]
-    D --> E[🧹 结果结构化<br/>name · intro · facts]
-    E --> F[⌨️ 打字机动画呈现]
+    A[📱 Camera capture] --> B[✂️ Center crop & compression<br/>JPEG · max side 640px]
+    B --> C[☁️ Cloudflare Worker<br/>forwarding & security limits]
+    C --> D[🧠 NVIDIA multimodal model<br/>llama-3.2-11b-vision]
+    D --> E[🧹 Result structuring<br/>name · intro · facts]
+    E --> F[⌨️ Typewriter animation]
 ```
 
-1. **采样与压缩**：取摄像头帧中心 60% 区域，压缩为 JPEG（质量 0.2），最长边不超过 640px，降低传输体积
-2. **传输与转发**：前端将 Base64 图片与中文提示词发送至 Cloudflare Worker，由其统一转发，密钥不出服务端
-3. **模型推理**：Worker 调用 NVIDIA Integrate API（`/v1/chat/completions`），获取多模态推理结果
-4. **清洗与展示**：提取并清洗文本，解析为 `name / intro / facts` 结构化字段，前端打字机动画呈现
+1. **Sampling & compression**: Crop the center 60% of the camera frame, compress to JPEG (quality 0.2), longest side no more than 640px, reducing transfer size
+2. **Transfer & forwarding**: The frontend sends the Base64 image and Chinese prompt to a Cloudflare Worker, which forwards it uniformly; the API key never leaves the server
+3. **Model inference**: The Worker calls the NVIDIA Integrate API (`/v1/chat/completions`) and gets the multimodal inference result
+4. **Cleaning & display**: Extract and clean the text, parse it into structured `name / intro / facts` fields, rendered by the frontend with a typewriter animation
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```text
 aura-vision/
-├── public/                # 静态资源（favicon 等）
+├── public/                # Static assets (favicon, etc.)
 ├── src/
 │   ├── components/
-│   │   └── ActivationModal.tsx   # 额度用尽激活弹窗
+│   │   └── ActivationModal.tsx   # Quota-exhausted activation modal
 │   ├── hooks/
-│   │   └── useTypewriter.ts      # 打字机动画 Hook
+│   │   └── useTypewriter.ts      # Typewriter animation hook
 │   ├── utils/
-│   │   ├── ai-service.ts         # 模型请求封装与结果解析
-│   │   ├── quota.ts              # 本地额度计数与激活码校验
-│   │   ├── visitor.ts            # 设备级访客统计
-│   │   └── crypto.ts             # 工具函数
-│   ├── App.tsx                   # 主界面：取景、识别循环、结果面板
-│   ├── index.css                 # 赛博风主题样式
-│   └── main.tsx                  # 入口
+│   │   ├── ai-service.ts         # Model request wrapper & result parsing
+│   │   ├── quota.ts              # Local quota counting & activation code check
+│   │   ├── visitor.ts            # Per-device visitor stats
+│   │   └── crypto.ts             # Utility functions
+│   ├── App.tsx                   # Main UI: viewfinder, recognition loop, result panel
+│   ├── index.css                 # Cyberpunk theme styles
+│   └── main.tsx                  # Entry point
 ├── api/
-│   └── identify.js               # Vercel Serverless 备用转发（NVIDIA API）
+│   └── identify.js               # Vercel Serverless backup forwarder (NVIDIA API)
 ├── .github/
-│   └── workflows/deploy.yml      # push 到 main 自动构建并发布 GitHub Pages
-└── vercel.json                   # 备用部署的 CORS 配置
+│   └── workflows/deploy.yml      # Auto build & publish to GitHub Pages on push to main
+└── vercel.json                   # CORS config for the backup deployment
 ```
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
 ```bash
 git clone https://github.com/Mocas-12/aura-vision.git
@@ -107,80 +107,80 @@ npm install
 npm run dev
 ```
 
-> 首次打开请允许浏览器摄像头权限，建议使用 Chrome / Edge / Safari 等现代浏览器。
+> Allow camera permission when opening for the first time. A modern browser such as Chrome / Edge / Safari is recommended.
 
-| 命令 | 说明 |
+| Command | Description |
 | --- | --- |
-| `npm install` | 安装依赖 |
-| `npm run dev` | 启动本地开发服务器（需允许摄像头） |
-| `npm run lint` | ESLint 代码检查 |
-| `npm run build` | TypeScript 类型检查 + 生产构建 |
-| `npm run deploy` | 手动部署到 GitHub Pages（gh‑pages 分支） |
+| `npm install` | Install dependencies |
+| `npm run dev` | Start the local dev server (camera permission required) |
+| `npm run lint` | ESLint check |
+| `npm run build` | TypeScript type check + production build |
+| `npm run deploy` | Manually deploy to GitHub Pages (gh‑pages branch) |
 
-部署说明：`push` 到 `main` 分支后，GitHub Actions 会自动完成构建并发布到 GitHub Pages（构建时自动注入 `VITE_BASE_PATH=/aura-vision/`），无需手动操作。
+Deployment note: after pushing to the `main` branch, GitHub Actions automatically builds and publishes to GitHub Pages (injecting `VITE_BASE_PATH=/aura-vision/` at build time); no manual steps required.
 
-## ⚙️ 配置说明
+## ⚙️ Configuration
 
-| 配置项 | 位置 | 说明 |
+| Item | Location | Description |
 | --- | --- | --- |
-| `NVIDIA_API_KEY` | Cloudflare Worker | 生产后端密钥，仅保存在 Worker 端，前端不持有 |
-| `NVIDIA_API_KEY` | Vercel 项目设置 | 仅在使用备用 Serverless 转发（`api/identify.js`）时需要 |
-| `VITE_BASE_PATH` | GitHub Actions | 部署路径前缀，CI 中已自动配置 |
+| `NVIDIA_API_KEY` | Cloudflare Worker | Production backend key, stored only on the Worker side; never held by the frontend |
+| `NVIDIA_API_KEY` | Vercel project settings | Only needed when using the backup Serverless forwarder (`api/identify.js`) |
+| `VITE_BASE_PATH` | GitHub Actions | Deployment path prefix, auto-configured in CI |
 
-## 🔌 接口说明
+## 🔌 API Reference
 
-- **生产链路（Cloudflare Worker）**
-  - `POST` JSON：`{ "imageDataUrl": "<纯 Base64>", "prompt": "<中文提示词>" }`
-  - 返回：NVIDIA 原始结构，前端优先提取 `choices[0].message.content`，解析失败时降级为全文展示
-- **备用链路（Vercel `POST /api/identify`）**
-  - 请求体：`image/jpeg` Base64（前端已清洗与压缩），后端限制解码后约 ≤ 4.5MB
-  - 已在 `vercel.json` 中为 GitHub Pages 来源配置 CORS
-- **路由探测**：前端启动后会向 Worker 发起 `GET` 探测，若返回 404 将显示「API 路由未配置」
+- **Production chain (Cloudflare Worker)**
+  - `POST` JSON: `{ "imageDataUrl": "<pure Base64>", "prompt": "<Chinese prompt>" }`
+  - Response: raw NVIDIA structure; the frontend prefers extracting `choices[0].message.content`, falling back to full-text display when parsing fails
+- **Backup chain (Vercel `POST /api/identify`)**
+  - Request body: `image/jpeg` Base64 (already sanitized & compressed by the frontend); backend limits the decoded size to about ≤ 4.5MB
+  - CORS for the GitHub Pages origin is configured in `vercel.json`
+- **Route probe**: on startup the frontend sends a `GET` probe to the Worker; a 404 response shows an "API route not configured" warning
 
-## 🔑 额度与激活
+## 🔑 Quota & Activation
 
-- 免费模式：每台设备内置 15 次免费识别（本地计数，无需注册）
-- 超限后自动弹出激活弹窗，可跳转「面包多」获取激活码
-- 激活后本设备永久解锁，不限使用次数
+- Free mode: 15 free recognizations per device (local counting, no registration required)
+- An activation modal pops up automatically when the quota is exhausted, with a link to "Mianbaoduo" to get an activation code
+- After activation, the device is permanently unlocked with unlimited usage
 
-## ❓ 常见问题
+## ❓ FAQ
 
 <details>
-<summary><b>摄像头不可用 / 黑屏</b></summary>
+<summary><b>Camera unavailable / black screen</b></summary>
 
-- 确认浏览器已允许摄像头权限（地址栏左侧图标可重新设置）
-- 检查是否有其他应用占用了摄像头
+- Confirm the browser has camera permission allowed (reconfigure via the icon on the left of the address bar)
+- Check whether another application is occupying the camera
 </details>
 
 <details>
-<summary><b>移动端识别报「识别受阻」</b></summary>
+<summary><b>Mobile reports "Recognition blocked"</b></summary>
 
-- 报错含 `Load failed` 时，多与内容拦截器、隐私转发（如 iCloud 私密转送）相关
-- 尝试关闭相关开关，或更换网络后重试
+- Errors containing `Load failed` are usually related to content blockers or private relays (e.g. iCloud Private Relay)
+- Try turning those off, or switch networks and retry
 </details>
 
 <details>
-<summary><b>长时间无结果</b></summary>
+<summary><b>No result for a long time</b></summary>
 
-- 识别请求有 8 秒超时保护，超时会自动提示，可点击重试
-- 自动模式下每 5 秒会再次尝试
+- Recognition requests have an 8-second timeout guard; a timeout is reported automatically and you can retry
+- In auto mode, another attempt is made every 5 seconds
 </details>
 
 <details>
-<summary><b>页面提示「API 路由未配置」</b></summary>
+<summary><b>The page says "API route not configured"</b></summary>
 
-- 说明启动探测未通过（Worker 返回 404），请检查 Worker 路由部署状态
+- The startup probe failed (the Worker returned 404); check the Worker route deployment status
 </details>
 
-## 🔒 隐私与安全
+## 🔒 Privacy & Security
 
-- 📷 图片仅在本地采样与压缩，**即时传输、不落库、不建立存储**
-- 🔑 API 密钥仅保存在服务端（Worker / Serverless），前端代码不持有任何密钥
-- 📊 访客统计只记录匿名计数，不采集个人身份信息
+- 📷 Images are only sampled and compressed locally — **transmitted instantly, never persisted or stored**
+- 🔑 API keys exist only on the server side (Worker / Serverless); the frontend code holds no keys
+- 📊 Visitor stats record anonymous counts only; no personally identifiable information is collected
 
-## 📄 许可证
+## 📄 License
 
-本项目用于学习与演示，未设置开源许可证；如需复用请联系作者。
+This project is for learning and demonstration purposes only; no open-source license is set. Contact the author before reuse.
 
 ---
 
@@ -188,6 +188,6 @@ npm run dev
 
 **Made with 💙 by Unlimited Box**
 
-🌐 [在线体验](https://mocas-12.github.io/aura-vision/) · 🐛 [问题反馈](https://github.com/Mocas-12/aura-vision/issues) · 📧 [a18577y@gmail.com](mailto:a18577y@gmail.com)
+🌐 [Live Preview](https://mocas-12.github.io/aura-vision/) · 🐛 [Report an Issue](https://github.com/Mocas-12/aura-vision/issues) · 📧 [a18577y@gmail.com](mailto:a18577y@gmail.com)
 
 </div>
