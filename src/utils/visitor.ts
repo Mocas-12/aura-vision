@@ -36,9 +36,3 @@ export function initProjectVisitor(): number {
   Store.set(VCOUNT_KEY, String(next))
   return next
 }
-
-export function getProjectVisitorCount(): number {
-  const raw = Store.get(VCOUNT_KEY)
-  const curr = parseInt(raw || '0', 10)
-  return isNaN(curr) ? 0 : curr
-}

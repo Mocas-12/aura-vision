@@ -116,9 +116,7 @@ module.exports = function(req, res) {
 
     function maskKey(k) {
       var s = String(k || '')
-      var head = s.slice(0, 10)
-      var tail = s.slice(-4)
-      return head + '...' + tail
+      return '...' + s.slice(-4)
     }
 
     function sendOnce(currModel, localPayload, done) {
@@ -138,6 +136,9 @@ module.exports = function(req, res) {
           var headers = nres.headers || {}
           done(null, { status: status, statusText: statusText, headers: headers, content: text, parsed: parsed })
         })
+      })
+      nreq.setTimeout(8000, function() {
+        nreq.destroy(new Error('upstream timeout'))
       })
       nreq.on('error', function(err) {
         done(err)

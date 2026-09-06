@@ -15,7 +15,6 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const lastSigRef = useRef<string>('')
-  const buildTimeRef = useRef<string>(new Date().toISOString())
   const [proc, setProc] = useState<string>('idle')
   const isProcessingRef = useRef<boolean>(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -35,9 +34,6 @@ export default function App() {
   const streaming = typingName || typingIntro || typingFacts
 
   const triggerRecognize = useCallback(async (isManual: boolean = false) => {
-    if (isManual) {
-      console.log('Manual trigger clicked')
-    }
     if (!cameraReady) return
     if (isManual) {
       if (abortRef.current) {
@@ -191,9 +187,11 @@ export default function App() {
   }, [cameraReady, busy, autoMode, streaming, silenceUntil])
 
   useEffect(() => {
-    const initialVideo = videoRef.current
     async function start() {
       try {
+        // 拿新流前先停掉旧流(StrictMode 双跑时), 保证同一时刻只有一条流
+        const prev = videoRef.current?.srcObject as MediaStream | null
+        prev?.getTracks()?.forEach((t) => t.stop())
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
           audio: false,
@@ -222,7 +220,7 @@ export default function App() {
     }
     start()
     return () => {
-      const stream = initialVideo?.srcObject as MediaStream | null
+      const stream = videoRef.current?.srcObject as MediaStream | null
       stream?.getTracks()?.forEach((t) => t.stop())
     }
   }, [])
@@ -272,10 +270,6 @@ export default function App() {
       setSilenceUntil(Date.now() + 5000)
     }
   }, [proc, streaming])
-
-  useEffect(() => {
-    console.log('[Aura-Vision] build:', buildTimeRef.current)
-  }, [])
 
   return (
     <div className="w-full min-h-screen relative flex flex-col" style={{ paddingBottom: '100px' }}>

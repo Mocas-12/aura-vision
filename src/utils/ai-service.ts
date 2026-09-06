@@ -27,11 +27,6 @@ export async function recognizeNearestCenterObject(opts: {
       signal: opts.signal,
     })
     const responseText = await res.text()
-    console.log('Worker Raw Response:', responseText)
-    if (res.status === 404) {
-      const debugHeaders = { ...headersUsed, Origin: window.location.origin, UserAgent: navigator.userAgent }
-      console.log('Request Headers (debug):', debugHeaders)
-    }
     if (!res.ok) {
       console.error('Worker response error', res.status, responseText)
       throw new Error(`服务器响应异常 (${res.status}): ${responseText}`)
@@ -82,7 +77,6 @@ export async function recognizeNearestCenterObject(opts: {
       .replace(/\n{2,}/g, '\n')
       .replace(/[ \t]{2,}/g, ' ')
       .trim()
-    console.log('NVIDIA fullText:', text)
     {
       const onlyEnglish = text.replace(/[^a-zA-Z]/g, '')
       const englishChars = onlyEnglish.length
