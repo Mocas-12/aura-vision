@@ -43,7 +43,7 @@
 - ⌨️ **Typewriter Presentation**: Results render with a gradient glowing title + character-by-character typewriter animation, and the result panel auto-scrolls to the bottom
 - 🔊 **Completion Sound**: Plays a short beep on successful recognition (auto-degrades in muted scenarios)
 - 📶 **Status & Diagnostics**: Mode-switch toast, thinking animation while recognizing, 8-second timeout guard, one-click copy of failure diagnostics
-- 👁️ **Visit Stats**: Total site page views (busuanzi + Worker dual channel) + per-device view count
+- 👁️ **Visit Stats**: Total site page views (Worker primary, busuanzi fallback) + per-device view count
 - 🔐 **Quota System**: Local free-quota counting, permanent unlock via activation code, no account required
 
 ## 🎨 UI Design
@@ -86,16 +86,19 @@ aura-vision/
 │   ├── utils/
 │   │   ├── ai-service.ts         # Model request wrapper & result parsing
 │   │   ├── quota.ts              # Local quota counting & activation code check
+│   │   ├── site-stats.ts         # Site stats hook (Worker primary + busuanzi fallback)
 │   │   ├── visitor.ts            # Per-device visitor stats
-│   │   └── crypto.ts             # Utility functions
+│   │   ├── config.ts             # Unified external endpoint config
+│   │   └── __tests__/            # Vitest unit tests
 │   ├── App.tsx                   # Main UI: viewfinder, recognition loop, result panel
 │   ├── index.css                 # Cyberpunk theme styles
 │   └── main.tsx                  # Entry point
 ├── api/
-│   └── identify.js               # Vercel Serverless backup forwarder (NVIDIA API)
-├── .github/
-│   └── workflows/deploy.yml      # Auto build & publish to GitHub Pages on push to main
-└── vercel.json                   # CORS config for the backup deployment
+│   ├── identify.js               # Vercel Serverless backup forwarder (NVIDIA API)
+│   ├── activate.js               # Vercel Serverless activation code validation
+│   └── _util.js                  # Shared helpers: CORS allowlist, rate limiting, body parsing
+└── .github/
+    └── workflows/deploy.yml      # Auto build & publish to GitHub Pages on push to main
 ```
 
 ## 🚀 Quick Start
@@ -114,6 +117,7 @@ npm run dev
 | `npm install` | Install dependencies |
 | `npm run dev` | Start the local dev server (camera permission required) |
 | `npm run lint` | ESLint check |
+| `npm run test` | Vitest unit tests |
 | `npm run build` | TypeScript type check + production build |
 | `npm run deploy` | Manually deploy to GitHub Pages (gh‑pages branch) |
 
@@ -125,6 +129,12 @@ Deployment note: after pushing to the `main` branch, GitHub Actions automaticall
 | --- | --- | --- |
 | `NVIDIA_API_KEY` | Cloudflare Worker | Production backend key, stored only on the Worker side; never held by the frontend |
 | `NVIDIA_API_KEY` | Vercel project settings | Only needed when using the backup Serverless forwarder (`api/identify.js`) |
+| `NVIDIA_VISION_MODEL` | Vercel project settings | Optional, overrides the primary vision model (fallback chain pins llama-3.2 90B) |
+| `ACTIVATION_CODES` | Vercel project settings | List of valid activation codes (comma/newline separated); when set, codes are validated server-side |
+| `ALLOWED_ORIGINS` | Vercel project settings | Optional, extra CORS allow-listed origins (comma separated) |
+| `VITE_WORKER_BASE` | Build-time env | Optional, overrides the Cloudflare Worker URL |
+| `VITE_API_BASE` | Build-time env | Optional, Vercel deployment base URL; when set, activation goes through server-side validation |
+| `VITE_STRICT_ACTIVATION` | Build-time env | Set to `true` to reject activation when the backend is unreachable (offline fallback is allowed by default) |
 | `VITE_BASE_PATH` | GitHub Actions | Deployment path prefix, auto-configured in CI |
 
 ## 🔌 API Reference
@@ -133,14 +143,21 @@ Deployment note: after pushing to the `main` branch, GitHub Actions automaticall
   - `POST` JSON: `{ "imageDataUrl": "<pure Base64>", "prompt": "<Chinese prompt>" }`
   - Response: raw NVIDIA structure; the frontend prefers extracting `choices[0].message.content`, falling back to full-text display when parsing fails
 - **Backup chain (Vercel `POST /api/identify`)**
-  - Request body: `image/jpeg` Base64 (already sanitized & compressed by the frontend); backend limits the decoded size to about ≤ 4.5MB
-  - CORS for the GitHub Pages origin is configured in `vercel.json`
+  - Request body: `{ "imageDataUrl": "<pure Base64>", "prompt": "<Chinese prompt>" }`; the prompt is now honored by the server (5–500 chars, falls back to the default prompt out of range)
+  - Decoded image is limited to about ≤ 4.5MB; rate limited to 10 requests/min per IP (429 when exceeded)
+  - CORS only allows allow-listed origins (the GitHub Pages domain + `ALLOWED_ORIGINS`); no more wildcard
+  - Model fallback chain: llama-3.2-11b-vision → llama-3.2-90b-vision (switched automatically on 404)
+- **Activation check (Vercel `POST /api/activate`)**
+  - Request body: `{ "code": "<activation code>" }`; returns `{ "ok": true }` when the code is in the `ACTIVATION_CODES` list, 403 otherwise
+  - Rate limited to 10 attempts/min per IP to prevent brute forcing
 - **Route probe**: on startup the frontend sends a `GET` probe to the Worker; a 404 response shows an "API route not configured" warning
 
 ## 🔑 Quota & Activation
 
-- Free mode: 15 free recognizations per device (local counting, no registration required)
+- Free mode: 15 free recognizations per device (local counting, no registration required); only successful recognitions consume quota
 - An activation modal pops up automatically when the quota is exhausted, with a link to "Mianbaoduo" to get an activation code
+- With `ACTIVATION_CODES` (Vercel) and `VITE_API_BASE` (frontend build) configured, activation codes are validated server-side instead of by a frontend regex
+- Without a backend, a local format check remains as a fallback (disable it with `VITE_STRICT_ACTIVATION=true`)
 - After activation, the device is permanently unlocked with unlimited usage
 
 ## ❓ FAQ

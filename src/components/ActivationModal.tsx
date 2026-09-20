@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { verifyCode } from '../utils/quota'
+import { activateWithCode } from '../utils/quota'
 
 type Props = {
   open: boolean
@@ -33,13 +33,17 @@ export default function ActivationModal({ open, onClose, onActivated }: Props) {
             <button
               className="px-3 py-2 rounded-full bg-blue-600 hover:bg-blue-500"
               disabled={loading}
-              onClick={() => {
+              onClick={async () => {
                 setError(null)
                 setLoading(true)
                 try {
-                  const ok = verifyCode(code)
-                  if (ok) {
+                  const result = await activateWithCode(code)
+                  if (result.ok) {
                     onActivated()
+                  } else if (result.rateLimited) {
+                    setError('尝试次数过多，请一分钟后再试。')
+                  } else if (result.offline) {
+                    setError('激活服务不可用，请检查网络后重试。')
                   } else {
                     setError('激活码无效，请检查是否输入正确。')
                   }

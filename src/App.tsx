@@ -1,22 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { recognizeNearestCenterObject, type Recognition } from './utils/ai-service'
+import {
+  recognizeNearestCenterObject,
+  DIAG_MARK,
+  diagText,
+  type Recognition,
+} from './utils/ai-service'
 import { useTypewriter } from './hooks/useTypewriter'
 import { initDefaults, isPro, remaining, getCount, setCount, QUOTA } from './utils/quota'
 import ActivationModal from './components/ActivationModal'
-import { initProjectVisitor } from './utils/visitor'
+import { useSiteStats } from './utils/site-stats'
+import { WORKER_BASE } from './utils/config'
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const apiKey = '' as const
   const [rec, setRec] = useState<Recognition | null>(null)
   const [busy, setBusy] = useState(false)
+  // Mirror of `busy` readable synchronously inside the interval callback
+  // (state updates are async, a bare state check would let requests pile up).
+  const busyRef = useRef(false)
+  const setBusyState = useCallback((v: boolean) => {
+    busyRef.current = v
+    setBusy(v)
+  }, [])
   const audioCtxRef = useRef<AudioContext | null>(null)
   const lastSigRef = useRef<string>('')
   const [proc, setProc] = useState<string>('idle')
-  const isProcessingRef = useRef<boolean>(false)
   const abortRef = useRef<AbortController | null>(null)
   const [apiWarn, setApiWarn] = useState<string | null>(null)
   const [showActivation, setShowActivation] = useState(false)
@@ -26,7 +37,7 @@ export default function App() {
   const lastSuccessRef = useRef<boolean>(false)
   const [manualLoading, setManualLoading] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
-  const [projectVisitor, setProjectVisitor] = useState<number>(0)
+  const { sitePv, devicePv } = useSiteStats()
 
   const [typedName, typingName] = useTypewriter(rec?.name ?? '', 15)
   const [typedIntro, typingIntro] = useTypewriter(rec?.intro ?? '', 10)
@@ -40,10 +51,9 @@ export default function App() {
         try { abortRef.current.abort() } catch (e) { console.warn('abort previous request error', e) }
         abortRef.current = null
       }
-      setBusy(false)
-      isProcessingRef.current = false
+      setBusyState(false)
     } else {
-      if (busy || isProcessingRef.current) return
+      if (busyRef.current) return
       if (!autoMode) return
       if (Date.now() < silenceUntil) return
     }
@@ -85,20 +95,10 @@ export default function App() {
     out.height = targetSize
     const octx = out.getContext('2d')
     octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
-    let dataUrl: string | null = out.toDataURL('image/jpeg', 0.2)
-    dataUrl = dataUrl?.replace(/\s/g, '') ?? null
-    if (!isPro()) {
-      const next = getCount() + 1
-      setCount(next)
-      const r2 = QUOTA - next
-      if (r2 <= 0) {
-        setShowActivation(true)
-      }
-    }
-    setBusy(true)
+    const dataUrl = out.toDataURL('image/jpeg', 0.2).replace(/\s/g, '')
+    setBusyState(true)
     if (isManual) setManualLoading(true)
     setProc('fetching')
-    isProcessingRef.current = true
     if (abortRef.current) {
       try {
         abortRef.current.abort()
@@ -113,9 +113,8 @@ export default function App() {
       const timeoutTag = Symbol('timeout')
       const resultOrTimeout = await Promise.race([
         recognizeNearestCenterObject({
-          apiKey,
-          imageDataUrl: dataUrl!,
-          signal: controller!.signal,
+          imageDataUrl: dataUrl,
+          signal: controller.signal,
         }),
         new Promise<Recognition | symbol>((resolve) =>
           setTimeout(() => resolve(timeoutTag), 8000),
@@ -124,12 +123,10 @@ export default function App() {
       if (resultOrTimeout === timeoutTag) {
         console.warn('Processing Status: timeout')
         setProc('timeout')
-        setRec({ name: '识别超时', intro: '请重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
-        setBusy(false)
-        isProcessingRef.current = false
+        setRec({ name: '识别超时', intro: '请重试', facts: diagText() })
+        setBusyState(false)
         abortRef.current?.abort()
         abortRef.current = null
-        dataUrl = null
         if (isManual) setManualLoading(false)
         return
       }
@@ -137,35 +134,44 @@ export default function App() {
       if (result) {
         setRec(result)
         setProc('done')
-        lastSuccessRef.current = result.name !== '识别失败'
+        const ok = result.name !== '识别失败'
+        lastSuccessRef.current = ok
+        // Quota is only consumed by successful recognitions.
+        if (ok && !isPro()) {
+          const next = getCount() + 1
+          setCount(next)
+          if (QUOTA - next <= 0) {
+            setShowActivation(true)
+          }
+        }
         try {
           const el = resultRef.current
           if (el) {
             el.scrollTop = el.scrollHeight
           }
         } catch { void 0 }
-        if (result.name !== '识别失败') {
+        if (ok) {
           const sig = `${result.name}|${result.intro}`
           if (sig !== lastSigRef.current) {
-            const ctx = audioCtxRef.current
-            if (ctx) {
-              const o = ctx.createOscillator()
-              const g = ctx.createGain()
+            const actx = audioCtxRef.current
+            if (actx) {
+              const o = actx.createOscillator()
+              const g = actx.createGain()
               o.type = 'sine'
-              o.frequency.setValueAtTime(880, ctx.currentTime)
-              g.gain.setValueAtTime(0, ctx.currentTime)
-              g.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01)
-              g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25)
+              o.frequency.setValueAtTime(880, actx.currentTime)
+              g.gain.setValueAtTime(0, actx.currentTime)
+              g.gain.linearRampToValueAtTime(0.2, actx.currentTime + 0.01)
+              g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.25)
               o.connect(g)
-              g.connect(ctx.destination)
+              g.connect(actx.destination)
               o.start()
-              o.stop(ctx.currentTime + 0.25)
+              o.stop(actx.currentTime + 0.25)
             }
             lastSigRef.current = sig
           }
         }
       } else {
-        setRec({ name: '网络繁忙', intro: '请稍后重试', facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
+        setRec({ name: '网络繁忙', intro: '请稍后重试', facts: diagText() })
         setProc('empty')
       }
     } catch (e) {
@@ -175,16 +181,27 @@ export default function App() {
       if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
         intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
       }
-      setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: `Build Time: ${new Date().toISOString()} -proxy-try` })
+      setRec({ name: '识别失败', intro: `${name ? name + ': ' : ''}${intro}`, facts: diagText() })
       setProc('error')
     } finally {
-      setBusy(false)
-      isProcessingRef.current = false
+      setBusyState(false)
       abortRef.current = null
-      dataUrl = null
       if (isManual) setManualLoading(false)
     }
-  }, [cameraReady, busy, autoMode, streaming, silenceUntil])
+  }, [cameraReady, autoMode, streaming, silenceUntil, setBusyState])
+
+  // Keep a ref to the latest callback so the 5s interval stays mounted and its
+  // cadence does not reset whenever a dependency of triggerRecognize changes.
+  const triggerRef = useRef(triggerRecognize)
+  useEffect(() => {
+    triggerRef.current = triggerRecognize
+  })
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void triggerRef.current()
+    }, 5000)
+    return () => window.clearInterval(id)
+  }, [])
 
   useEffect(() => {
     async function start() {
@@ -197,7 +214,10 @@ export default function App() {
           audio: false,
         })
         const v = videoRef.current
-        if (!v) return
+        if (!v) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
         v.srcObject = stream
         await v.play()
         setCameraReady(true)
@@ -219,22 +239,29 @@ export default function App() {
       }
     }
     start()
+    // Capture the stream in a local so cleanup stops the tracks this effect opened,
+    // not whatever the ref points to by the time cleanup runs.
+    const captured = videoRef.current
     return () => {
-      const stream = videoRef.current?.srcObject as MediaStream | null
+      const stream = captured?.srcObject as MediaStream | null
       stream?.getTracks()?.forEach((t) => t.stop())
     }
   }, [])
 
+  // AudioContext created without a user gesture starts suspended; unlock it on
+  // the first interaction so the completion beep can actually sound.
   useEffect(() => {
-    const n = initProjectVisitor()
-    setProjectVisitor(n)
+    const resume = () => {
+      audioCtxRef.current?.resume().catch(() => {})
+    }
+    window.addEventListener('pointerdown', resume, { once: true })
+    return () => window.removeEventListener('pointerdown', resume)
   }, [])
-
 
   useEffect(() => {
     initDefaults()
     let done = false
-    fetch('https://square-bread-b238.a18577y.workers.dev', { method: 'GET' })
+    fetch(WORKER_BASE, { method: 'GET' })
       .then((r) => {
         if (!done && r.status === 404) {
           setApiWarn('API 路由未配置')
@@ -245,13 +272,6 @@ export default function App() {
       done = true
     }
   }, [])
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      triggerRecognize()
-    }, 5000)
-    return () => window.clearInterval(interval)
-  }, [triggerRecognize])
 
   useEffect(() => {
     if (proc !== 'done') return
@@ -338,9 +358,9 @@ export default function App() {
                       setManualLoading(false)
                     }
                   }}
-                  disabled={manualLoading || busy || isProcessingRef.current}
+                  disabled={manualLoading || busy}
                 >
-                  {manualLoading || busy || isProcessingRef.current ? '识别中…' : '手动识别'}
+                  {manualLoading || busy ? '识别中…' : '手动识别'}
                 </button>
               )}
             </div>
@@ -397,7 +417,7 @@ export default function App() {
                 </span>
               ) : typedIntro}
             </div>
-            {(rec?.name === '识别失败' || ((rec?.facts ?? '').includes('Build Time'))) && (
+            {(rec?.name === '识别失败' || (rec?.facts ?? '').includes(DIAG_MARK)) && (
               <div
                 className="mt-3 text-sm cyber-text whitespace-pre-wrap break-all"
                 style={{ lineHeight: 1.6, fontSize: '1.1rem' }}
@@ -408,23 +428,23 @@ export default function App() {
           </div>
         </div>
       </div>
-      
+
       <div className="relative z-10 w-full mt-auto pt-5 mb-10">
         <div
           className="glass mx-auto rounded-3xl px-4 py-2 text-center flex flex-col items-center gap-2"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', width: 'fit-content', maxWidth: '90%' }}
         >
           <div className="text-sm cyber-text flex items-center justify-center gap-4">
-            <span id="busuanzi_container_site_pv" className="flex items-center gap-1" style={{ display: 'inline' }}>
+            <span className="flex items-center gap-1">
               <span>👁️</span>
               <span>总访问量：</span>
-              <span id="busuanzi_value_site_pv" style={{ fontFamily: 'monospace' }}>加载中...</span>
+              <span style={{ fontFamily: 'monospace' }}>{sitePv}</span>
             </span>
-            <span className="sep" id="busuanzi_sep" style={{ display: 'none' }}>|</span>
-            <span id="av_container_project_uv" className="flex items-center gap-1" style={{ display: 'inline' }}>
+            <span className="sep">|</span>
+            <span className="flex items-center gap-1">
               <span>👤</span>
               <span>本设备浏览次数：</span>
-              <span id="av_project_uv_value" style={{ fontFamily: 'monospace' }}>{projectVisitor}</span>
+              <span style={{ fontFamily: 'monospace' }}>{devicePv}</span>
             </span>
           </div>
           <div className="text-sm cyber-text flex items-center justify-center gap-[10px] overflow-hidden flex-nowrap">

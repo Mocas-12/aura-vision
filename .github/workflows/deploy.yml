@@ -27,6 +27,10 @@ jobs:
       - name: Build
         env:
           VITE_BASE_PATH: /aura-vision/
+          # Vercel deployment base (e.g. https://aura-vision.vercel.app).
+          # Set it as a repository variable to enable server-side activation;
+          # leave it empty to fall back to local activation checks.
+          VITE_API_BASE: ${{ vars.VERCEL_API_BASE }}
         run: npm run build
 
       - name: Add SPA fallback (404 -> index.html)

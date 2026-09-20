@@ -43,7 +43,7 @@
 - ⌨️ **打字机呈现**：识别结果以渐变发光标题 + 打字机动画逐字输出，结果区自动滚动到底部
 - 🔊 **完成提示音**：识别成功播放短促提示音（可静音场景下自动降级）
 - 📶 **状态与诊断**：模式切换 Toast 提示、识别中思考动画、8 秒超时保护、失败诊断信息一键复制
-- 👁️ **访问统计**：站点总访问量（不蒜子 + Worker 双通道）+ 本设备浏览次数
+- 👁️ **访问统计**：站点总访问量（Worker 主通道，不蒜子回退）+ 本设备浏览次数
 - 🔐 **额度系统**：本地免费额度计数，激活码永久解锁，全程无需账号
 
 ## 🎨 界面设计
@@ -86,16 +86,19 @@ aura-vision/
 │   ├── utils/
 │   │   ├── ai-service.ts         # 模型请求封装与结果解析
 │   │   ├── quota.ts              # 本地额度计数与激活码校验
+│   │   ├── site-stats.ts         # 站点统计 Hook（Worker 主通道 + 不蒜子回退）
 │   │   ├── visitor.ts            # 设备级访客统计
-│   │   └── crypto.ts             # 工具函数
+│   │   ├── config.ts             # 外部端点统一配置
+│   │   └── __tests__/            # Vitest 单元测试
 │   ├── App.tsx                   # 主界面：取景、识别循环、结果面板
 │   ├── index.css                 # 赛博风主题样式
 │   └── main.tsx                  # 入口
 ├── api/
-│   └── identify.js               # Vercel Serverless 备用转发（NVIDIA API）
-├── .github/
-│   └── workflows/deploy.yml      # push 到 main 自动构建并发布 GitHub Pages
-└── vercel.json                   # 备用部署的 CORS 配置
+│   ├── identify.js               # Vercel Serverless 备用转发（NVIDIA API）
+│   ├── activate.js               # Vercel Serverless 激活码校验
+│   └── _util.js                  # 共享工具：CORS 白名单、限流、请求体解析
+└── .github/
+    └── workflows/deploy.yml      # push 到 main 自动构建并发布 GitHub Pages
 ```
 
 ## 🚀 快速开始
@@ -114,6 +117,7 @@ npm run dev
 | `npm install` | 安装依赖 |
 | `npm run dev` | 启动本地开发服务器（需允许摄像头） |
 | `npm run lint` | ESLint 代码检查 |
+| `npm run test` | Vitest 单元测试 |
 | `npm run build` | TypeScript 类型检查 + 生产构建 |
 | `npm run deploy` | 手动部署到 GitHub Pages（gh‑pages 分支） |
 
@@ -125,6 +129,12 @@ npm run dev
 | --- | --- | --- |
 | `NVIDIA_API_KEY` | Cloudflare Worker | 生产后端密钥，仅保存在 Worker 端，前端不持有 |
 | `NVIDIA_API_KEY` | Vercel 项目设置 | 仅在使用备用 Serverless 转发（`api/identify.js`）时需要 |
+| `NVIDIA_VISION_MODEL` | Vercel 项目设置 | 可选，覆盖首选视觉模型（降级链固定为 llama-3.2 90B） |
+| `ACTIVATION_CODES` | Vercel 项目设置 | 合法激活码清单（逗号/换行分隔）；配置后激活码改为服务端校验 |
+| `ALLOWED_ORIGINS` | Vercel 项目设置 | 可选，额外的 CORS 白名单来源（逗号分隔） |
+| `VITE_WORKER_BASE` | 构建时环境变量 | 可选，覆盖 Cloudflare Worker 地址 |
+| `VITE_API_BASE` | 构建时环境变量 | 可选，Vercel 部署地址；配置后激活走服务端校验 |
+| `VITE_STRICT_ACTIVATION` | 构建时环境变量 | 设为 `true` 时后端不可用即拒绝激活（默认允许离线回退） |
 | `VITE_BASE_PATH` | GitHub Actions | 部署路径前缀，CI 中已自动配置 |
 
 ## 🔌 接口说明
@@ -133,14 +143,21 @@ npm run dev
   - `POST` JSON：`{ "imageDataUrl": "<纯 Base64>", "prompt": "<中文提示词>" }`
   - 返回：NVIDIA 原始结构，前端优先提取 `choices[0].message.content`，解析失败时降级为全文展示
 - **备用链路（Vercel `POST /api/identify`）**
-  - 请求体：`image/jpeg` Base64（前端已清洗与压缩），后端限制解码后约 ≤ 4.5MB
-  - 已在 `vercel.json` 中为 GitHub Pages 来源配置 CORS
+  - 请求体：`{ "imageDataUrl": "<纯 Base64>", "prompt": "<中文提示词>" }`，提示词将被服务端采用（长度 5–500 字，超限回退默认提示词）
+  - 图片解码后限制约 ≤ 4.5MB；每 IP 每分钟限 10 次（超限返回 429）
+  - CORS 仅对白名单来源放行（GitHub Pages 域名 + `ALLOWED_ORIGINS`），不再使用通配符
+  - 模型降级链：llama-3.2-11b-vision → llama-3.2-90b-vision（404 时自动切换）
+- **激活校验（Vercel `POST /api/activate`）**
+  - 请求体：`{ "code": "<激活码>" }`；在 `ACTIVATION_CODES` 清单内返回 `{ "ok": true }`，否则 403
+  - 每 IP 每分钟限 10 次，防止穷举
 - **路由探测**：前端启动后会向 Worker 发起 `GET` 探测，若返回 404 将显示「API 路由未配置」
 
 ## 🔑 额度与激活
 
-- 免费模式：每台设备内置 15 次免费识别（本地计数，无需注册）
+- 免费模式：每台设备内置 15 次免费识别（本地计数，无需注册），且仅成功识别才消耗次数
 - 超限后自动弹出激活弹窗，可跳转「面包多」获取激活码
+- 配置 `ACTIVATION_CODES`（Vercel）与 `VITE_API_BASE`（前端构建）后，激活码由服务端校验，不再依赖前端正则
+- 未配置后端时保留本地格式校验作为回退（设 `VITE_STRICT_ACTIVATION=true` 可关闭）
 - 激活后本设备永久解锁，不限使用次数
 
 ## ❓ 常见问题

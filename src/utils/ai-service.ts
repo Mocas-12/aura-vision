@@ -1,28 +1,81 @@
+import { WORKER_BASE } from './config'
+
 export type Recognition = {
   name: string
   intro: string
   facts: string
 }
 
+// Marker embedded in `facts` for client-side diagnostics (timestamp etc.);
+// the result panel shows facts only when it contains this marker.
+export const DIAG_MARK = '诊断时间'
+
+export function diagText(): string {
+  return `${DIAG_MARK}: ${new Date().toISOString()}`
+}
+
+/** Pull the assistant text out of an NVIDIA-shaped chat completion response. */
+export function extractModelText(json: unknown): string {
+  if (json == null || typeof json !== 'object') return ''
+  const choices = (json as { choices?: Array<Record<string, unknown>> }).choices ?? []
+  for (const choice of choices) {
+    const message = choice?.message as { content?: unknown } | undefined
+    const delta = choice?.delta as { content?: unknown } | undefined
+    const content = message?.content ?? delta?.content
+    if (typeof content === 'string' && content.trim()) {
+      return content
+    }
+    if (Array.isArray(content)) {
+      const text = (content as Array<{ type?: string; text?: string }>)
+        .map((p) => p?.text ?? '')
+        .filter(Boolean)
+        .join('\n')
+      if (text.trim()) return text
+    }
+  }
+  return ''
+}
+
+/** Clean raw model output and shape it into a Recognition. */
+export function buildRecognition(rawText: string): Recognition {
+  const text = String(rawText)
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{2,}/g, '\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim()
+  if (!text) {
+    return { name: '识别结果', intro: 'AI 返回内容为空', facts: '' }
+  }
+  try {
+    const parsed = JSON.parse(text) as { name?: unknown; intro?: unknown; facts?: unknown } | null
+    if (parsed && typeof parsed === 'object') {
+      const name = parsed.name != null ? String(parsed.name) : '未知物体'
+      const intro = parsed.intro != null ? String(parsed.intro) : '无简介'
+      const facts = parsed.facts != null ? String(parsed.facts) : ''
+      return { name, intro, facts }
+    }
+  } catch {
+    // not JSON — show the text as-is
+  }
+  return { name: '识别结果', intro: text, facts: '' }
+}
+
 export async function recognizeNearestCenterObject(opts: {
-  apiKey: string
   imageDataUrl: string
   prompt?: string
   signal?: AbortSignal
 }): Promise<Recognition | null> {
-  const workerBase = 'https://square-bread-b238.a18577y.workers.dev/'
-  const url = `${workerBase}?t=${Date.now()}`
+  const url = `${WORKER_BASE}?t=${Date.now()}`
   const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '').replace(/^data:[^;]+;base64,/i, '')
   const requestBody = {
     imageDataUrl: cleanImageUrl,
     prompt: opts.prompt ?? '请用中文总结图片内容或说明文大意，最多30字。',
   }
   try {
-    const headersUsed = { 'Content-Type': 'application/json', Accept: 'application/json' }
     const res = await fetch(url, {
       method: 'POST',
       mode: 'cors',
-      headers: headersUsed,
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(requestBody),
       signal: opts.signal,
     })
@@ -37,69 +90,15 @@ export async function recognizeNearestCenterObject(opts: {
     } catch (err) {
       console.error('服务器返回原文:', responseText)
       if (err instanceof SyntaxError) {
-        return {
-          name: '识别失败',
-          intro: '服务器返回格式异常',
-          facts: '',
-        }
+        return { name: '识别失败', intro: '服务器返回格式异常', facts: '' }
       }
       throw err
     }
-    const rawChoiceJson = (json as { raw_choice_json?: string | null }).raw_choice_json ?? null
-    const choices = (json as { choices?: Array<{ message?: { content?: unknown } }> }).choices ?? []
-    const contentAny = choices?.[0]?.message?.content
-    let text = ''
-    if (typeof contentAny === 'string') {
-      text = contentAny
-    } else if (Array.isArray(contentAny)) {
-      text = (contentAny as Array<{ type?: string; text?: string }>).map((p) => p?.text ?? '').filter(Boolean).join('\n')
-    } else {
-      text = ''
-    }
-    if (!text) {
-      if (choices?.[0]) {
-        try {
-          text = JSON.stringify(choices[0])
-        } catch {
-          text = ''
-        }
-      }
-      if (!text && rawChoiceJson) {
-        text = rawChoiceJson
-      }
-    }
+    const text = extractModelText(json)
     if (!text) {
       throw new Error('AI 返回内容为空')
     }
-    // 长文本清洗：去除冗余换行与空白
-    text = String(text)
-      .replace(/\r\n/g, '\n')
-      .replace(/\n{2,}/g, '\n')
-      .replace(/[ \t]{2,}/g, ' ')
-      .trim()
-    {
-      const onlyEnglish = text.replace(/[^a-zA-Z]/g, '')
-      const englishChars = onlyEnglish.length
-      const total = text.length
-      if (total > 0 && englishChars / total > 0.5) {
-        text = '【自动翻译总结】：' + text.slice(0, 30) + '...'
-      }
-    }
-    try {
-      const parsed = JSON.parse(text) as { name?: unknown; intro?: unknown; facts?: unknown } | null
-      if (parsed && typeof parsed === 'object') {
-        const name = parsed.name != null ? String(parsed.name) : '未知物体'
-        const intro = parsed.intro != null ? String(parsed.intro) : '无简介'
-        const facts = parsed.facts != null ? String(parsed.facts) : ''
-        return { name, intro, facts }
-      }
-    } catch {
-      return {
-        name: '识别结果',
-        intro: text,
-        facts: '',
-      }
-    }
+    return buildRecognition(text)
   } catch (e) {
     console.error('NVIDIA API network error', e)
     const name = (e as { name?: string })?.name
@@ -110,8 +109,7 @@ export async function recognizeNearestCenterObject(opts: {
     return {
       name: '识别失败',
       intro: `${name ? name + ': ' : ''}${intro}`,
-      facts: `Build Time: ${new Date().toISOString()} -proxy-try`,
+      facts: diagText(),
     }
   }
-  return null
 }
