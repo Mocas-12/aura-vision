@@ -93,12 +93,15 @@ aura-vision/
 │   ├── App.tsx                   # Main UI: viewfinder, recognition loop, result panel
 │   ├── index.css                 # Cyberpunk theme styles
 │   └── main.tsx                  # Entry point
+├── e2e/
+│   └── smoke.spec.ts             # Playwright smoke: page load, activation flow
 ├── api/
 │   ├── identify.js               # Vercel Serverless backup forwarder (NVIDIA API)
 │   ├── activate.js               # Vercel Serverless activation code validation
 │   └── _util.js                  # Shared helpers: CORS allowlist, rate limiting, body parsing
+├── worker/                       # Production Cloudflare Worker source (see worker/README.md)
 └── .github/
-    └── workflows/deploy.yml      # Auto build & publish to GitHub Pages on push to main
+    └── workflows/deploy.yml      # push to main → test → build → publish → production E2E smoke
 ```
 
 ## 🚀 Quick Start
@@ -118,10 +121,11 @@ npm run dev
 | `npm run dev` | Start the local dev server (camera permission required) |
 | `npm run lint` | ESLint check |
 | `npm run test` | Vitest unit tests |
+| `npm run e2e` | Playwright smoke tests (real activation chain via production API) |
 | `npm run build` | TypeScript type check + production build |
 | `npm run deploy` | Manually deploy to GitHub Pages (gh‑pages branch) |
 
-Deployment note: after pushing to the `main` branch, GitHub Actions automatically builds and publishes to GitHub Pages (injecting `VITE_BASE_PATH=/aura-vision/` at build time); no manual steps required.
+Deployment note: after pushing to the `main` branch, GitHub Actions automatically runs unit tests, builds and publishes to GitHub Pages (injecting `VITE_BASE_PATH=/aura-vision/` at build time), then smoke-tests the live site with Playwright; no manual steps required.
 
 ## ⚙️ Configuration
 

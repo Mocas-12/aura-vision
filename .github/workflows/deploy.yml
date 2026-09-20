@@ -45,3 +45,14 @@ jobs:
           branch: gh-pages
           folder: dist
           clean: true
+
+      # Post-deploy smoke against the live site: exercises the real activation
+      # chain (browser → GitHub Pages UI → Vercel API). Runs after deploy so a
+      # Vercel hiccup can't block shipping, but still fails the run visibly.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E smoke (production)
+        env:
+          E2E_BASE_URL: https://mocas-12.github.io/aura-vision/
+        run: npx playwright test

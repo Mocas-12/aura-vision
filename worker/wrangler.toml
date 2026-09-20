@@ -1,0 +1,14 @@
+name = "square-bread-b238"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Extra CORS origins, comma-separated. The GitHub Pages domain and local dev
+# ports (5173/4173/4174) are always allowed; add e.g. a Vercel domain here.
+ALLOWED_ORIGINS = ""
+
+[[kv_namespaces]]
+# Create the namespace and paste its id:
+#   npx wrangler kv namespace create STATS
+binding = "STATS"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

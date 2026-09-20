@@ -6,5 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
+    // Playwright lives in e2e/; keep vitest away from its *.spec.ts files.
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
   },
 })

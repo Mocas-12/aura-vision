@@ -93,12 +93,15 @@ aura-vision/
 │   ├── App.tsx                   # 主界面：取景、识别循环、结果面板
 │   ├── index.css                 # 赛博风主题样式
 │   └── main.tsx                  # 入口
+├── e2e/
+│   └── smoke.spec.ts             # Playwright 冒烟测试：页面加载、激活流程
 ├── api/
 │   ├── identify.js               # Vercel Serverless 备用转发（NVIDIA API）
 │   ├── activate.js               # Vercel Serverless 激活码校验
 │   └── _util.js                  # 共享工具：CORS 白名单、限流、请求体解析
+├── worker/                       # 生产 Cloudflare Worker 源码（见 worker/README.md）
 └── .github/
-    └── workflows/deploy.yml      # push 到 main 自动构建并发布 GitHub Pages
+    └── workflows/deploy.yml      # push 到 main → 测试 → 构建 → 发布 → 生产 E2E 冒烟
 ```
 
 ## 🚀 快速开始
@@ -118,10 +121,11 @@ npm run dev
 | `npm run dev` | 启动本地开发服务器（需允许摄像头） |
 | `npm run lint` | ESLint 代码检查 |
 | `npm run test` | Vitest 单元测试 |
+| `npm run e2e` | Playwright 冒烟测试（经生产 API 验证真实激活链路） |
 | `npm run build` | TypeScript 类型检查 + 生产构建 |
 | `npm run deploy` | 手动部署到 GitHub Pages（gh‑pages 分支） |
 
-部署说明：`push` 到 `main` 分支后，GitHub Actions 会自动完成构建并发布到 GitHub Pages（构建时自动注入 `VITE_BASE_PATH=/aura-vision/`），无需手动操作。
+部署说明：`push` 到 `main` 分支后，GitHub Actions 会自动执行单元测试、构建并发布到 GitHub Pages（构建时自动注入 `VITE_BASE_PATH=/aura-vision/`），最后用 Playwright 对线上站点做冒烟验证，无需手动操作。
 
 ## ⚙️ 配置说明
 
