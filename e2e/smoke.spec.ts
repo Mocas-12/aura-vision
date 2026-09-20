@@ -1,6 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const QUOTA_KEY = 'aura-vision-recognize-count'
+// App path under the site base. goto('/') would replace the baseURL path
+// entirely (landing on the github.io root in CI), so always use the full path.
+const APP = '/aura-vision/'
 
 // Third-party stat endpoints must not make tests flaky (or inflate counters).
 test.beforeEach(async ({ page }) => {
@@ -11,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 // ready; the fake camera flags in playwright.config make that happen headlessly.
 async function openActivationModal(page: Page) {
   await page.addInitScript((key) => localStorage.setItem(key, '15'), QUOTA_KEY)
-  await page.goto('/')
+  await page.goto(APP)
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible({ timeout: 30_000 })
   await expect(dialog.getByText('额度已用尽')).toBeVisible()
@@ -19,7 +22,7 @@ async function openActivationModal(page: Page) {
 }
 
 test('页面加载并进入取景状态', async ({ page }) => {
-  await page.goto('/')
+  await page.goto(APP)
   await expect(page.locator('.scan-frame')).toBeVisible()
   // Fake camera grants access → status flips from 摄像头启动中… to 待机.
   await expect(page.getByText('待机')).toBeVisible({ timeout: 15_000 })

@@ -67,5 +67,5 @@ jobs:
 
       - name: E2E smoke (production)
         env:
-          E2E_BASE_URL: https://mocas-12.github.io/aura-vision/
+          E2E_BASE_URL: https://mocas-12.github.io
         run: npx playwright test
