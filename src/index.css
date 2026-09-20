@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 html, body, #root {
   min-height: 100%;
@@ -208,6 +206,93 @@ body {
   color: rgba(228, 248, 255, 0.92);
 }
 
+/* ── Activation modal ───────────────────────────────── */
+
+.cyber-input {
+  background: rgba(2, 8, 16, 0.75);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 14px;
+  color: #bdf6ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-align: center;
+  caret-color: #00e5ff;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.cyber-input::placeholder {
+  color: rgba(125, 234, 255, 0.25);
+}
+.cyber-input:focus {
+  outline: none;
+  border-color: rgba(0, 229, 255, 0.7);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.18), inset 0 0 8px rgba(0, 229, 255, 0.06);
+}
+.cyber-input:disabled {
+  opacity: 0.6;
+}
+
+.activate-btn {
+  border-radius: 999px;
+  color: #031018;
+  font-weight: 600;
+  background: linear-gradient(92deg, #7df3ff 0%, #38bdf8 50%, #b492ff 100%);
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.3);
+  transition: transform 0.18s ease, box-shadow 0.25s ease, filter 0.2s ease, opacity 0.2s ease;
+}
+.activate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(0, 229, 255, 0.45);
+  filter: brightness(1.05);
+}
+.activate-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+.activate-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.activate-backdrop {
+  animation: backdropIn 0.25s ease both;
+}
+.activate-panel {
+  animation: modalIn 0.32s cubic-bezier(0.21, 1.02, 0.73, 1) both;
+}
+.status-dot {
+  animation: statusPulse 1.6s ease-in-out infinite;
+}
+.shake-once {
+  animation: inputShake 0.4s ease;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes statusPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+@keyframes inputShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
 .thinking {
   color: rgba(228, 248, 255, 0.92);
 }
@@ -330,7 +415,12 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .scan-frame.is-busy,
   .thinking .dots i,
-  .toast .inner {
+  .toast .inner,
+  .cyber-panel::after,
+  .activate-backdrop,
+  .activate-panel,
+  .status-dot,
+  .shake-once {
     animation: none;
   }
 }
