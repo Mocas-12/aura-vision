@@ -49,6 +49,19 @@ jobs:
       # Post-deploy smoke against the live site: exercises the real activation
       # chain (browser → GitHub Pages UI → Vercel API). Runs after deploy so a
       # Vercel hiccup can't block shipping, but still fails the run visibly.
+      - name: Wait for Pages CDN to serve this build
+        run: |
+          expected=$(ls dist/assets | grep '^index-.*\.js$' | head -1)
+          for i in $(seq 1 30); do
+            if curl -fs "https://mocas-12.github.io/aura-vision/" | grep -q "$expected"; then
+              echo "CDN serves $expected"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "CDN did not serve $expected within 5 minutes"
+          exit 1
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
