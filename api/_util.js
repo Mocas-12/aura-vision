@@ -4,8 +4,13 @@
 
 const allowDefault = [
   'https://mocas-12.github.io',
+  // local dev (5173), vite preview (4173) and the e2e preview (4174)
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
+  'http://localhost:4174',
+  'http://127.0.0.1:4174',
 ]
 
 // Extra origins can be added via the ALLOWED_ORIGINS env var (comma-separated).
