@@ -139,14 +139,17 @@ export function useRecognition({
         if (isManual) setManualLoading(false)
         return
       }
-      const result = resultOrTimeout as Recognition | null
+        const result = resultOrTimeout as Recognition | null
       if (result) {
         setRec(result)
         setProc('done')
         const ok = result.name !== '识别失败'
         lastSuccessRef.current = ok
-        // Quota is only consumed by successful recognitions.
-        if (ok && !isPro()) {
+        const sig = `${result.name}|${result.intro}`
+        // Auto mode re-fires every 5s: only a *new* result consumes quota and
+        // beeps, so pointing at one object does not burn the free quota down.
+        const isNewResult = sig !== lastSigRef.current
+        if (ok && isNewResult && !isPro()) {
           const next = getCount() + 1
           setCount(next)
           if (QUOTA - next <= 0) {
@@ -159,25 +162,22 @@ export function useRecognition({
             el.scrollTop = el.scrollHeight
           }
         } catch { void 0 }
-        if (ok) {
-          const sig = `${result.name}|${result.intro}`
-          if (sig !== lastSigRef.current) {
-            const actx = audioCtxRef.current
-            if (actx) {
-              const o = actx.createOscillator()
-              const g = actx.createGain()
-              o.type = 'sine'
-              o.frequency.setValueAtTime(880, actx.currentTime)
-              g.gain.setValueAtTime(0, actx.currentTime)
-              g.gain.linearRampToValueAtTime(0.2, actx.currentTime + 0.01)
-              g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.25)
-              o.connect(g)
-              g.connect(actx.destination)
-              o.start()
-              o.stop(actx.currentTime + 0.25)
-            }
-            lastSigRef.current = sig
+        if (ok && isNewResult) {
+          const actx = audioCtxRef.current
+          if (actx) {
+            const o = actx.createOscillator()
+            const g = actx.createGain()
+            o.type = 'sine'
+            o.frequency.setValueAtTime(880, actx.currentTime)
+            g.gain.setValueAtTime(0, actx.currentTime)
+            g.gain.linearRampToValueAtTime(0.2, actx.currentTime + 0.01)
+            g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.25)
+            o.connect(g)
+            g.connect(actx.destination)
+            o.start()
+            o.stop(actx.currentTime + 0.25)
           }
+          lastSigRef.current = sig
         }
       } else {
         setRec({ name: '网络繁忙', intro: '请稍后重试', facts: diagText() })

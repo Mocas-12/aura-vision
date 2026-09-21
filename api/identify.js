@@ -118,7 +118,9 @@ module.exports = async function (req, res) {
 
   let input
   try {
-    input = await readJsonBody(req)
+    // Body cap sits above the ~6.3MB base64 envelope of a 4.5MB image so the
+    // image-size check below can produce its specific error message.
+    input = await readJsonBody(req, { maxBytes: 8 * 1024 * 1024 })
   } catch (e) {
     sendJson(res, e.status || 400, { error: e.message })
     return
