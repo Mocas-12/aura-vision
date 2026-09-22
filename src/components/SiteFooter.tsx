@@ -13,7 +13,7 @@ export default function SiteFooter({ sitePv, devicePv }: SiteStats) {
             <span>总访问量：</span>
             <span style={{ fontFamily: 'monospace' }}>{sitePv}</span>
           </span>
-          <span className="sep">|</span>
+          <span>|</span>
           <span className="flex items-center gap-1">
             <span>👤</span>
             <span>本设备浏览次数：</span>

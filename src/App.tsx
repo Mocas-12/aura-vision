@@ -40,7 +40,7 @@ export default function App() {
   useEffect(() => {
     initDefaults()
     let done = false
-    fetch(WORKER_BASE, { method: 'GET' })
+    fetch(WORKER_BASE)
       .then((r) => {
         if (!done && r.status === 404) {
           setApiWarn('API 路由未配置')

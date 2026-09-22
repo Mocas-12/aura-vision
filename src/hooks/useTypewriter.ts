@@ -12,7 +12,7 @@ export function useTypewriter(text: string, speed = 20): [string, boolean] {
     }
     setRendered('')
     setRunning(Boolean(text))
-    const chars = Array.from(text || '')
+    const chars = Array.from(text)
     let i = 0
     timer.current = window.setInterval(() => {
       i++

@@ -15,9 +15,8 @@ function fetchWorkerPv(): Promise<number> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ site: 'aura-vision' }),
-      mode: 'cors',
     })
-    const res = await fetch(`${WORKER_BASE}/stats`, { method: 'GET', mode: 'cors' })
+    const res = await fetch(`${WORKER_BASE}/stats`)
     if (!res.ok) throw new Error(`stats ${res.status}`)
     const json = (await res.json()) as { site_pv?: unknown }
     if (typeof json.site_pv !== 'number') throw new Error('stats payload invalid')

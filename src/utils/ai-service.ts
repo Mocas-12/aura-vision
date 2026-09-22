@@ -74,7 +74,6 @@ export async function recognizeNearestCenterObject(opts: {
   try {
     const res = await fetch(url, {
       method: 'POST',
-      mode: 'cors',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(requestBody),
       signal: opts.signal,
