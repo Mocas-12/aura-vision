@@ -123,9 +123,8 @@ npm run dev
 | `npm run test` | Vitest 单元测试 |
 | `npm run e2e` | Playwright 冒烟测试（经生产 API 验证真实激活链路） |
 | `npm run build` | TypeScript 类型检查 + 生产构建 |
-| `npm run deploy` | 手动部署到 GitHub Pages（gh‑pages 分支） |
 
-部署说明：`push` 到 `main` 分支后，GitHub Actions 会自动执行单元测试、构建并发布到 GitHub Pages（构建时自动注入 `VITE_BASE_PATH=/aura-vision/`），最后用 Playwright 对线上站点做冒烟验证，无需手动操作。
+部署说明：`push` 到 `main` 分支后，GitHub Actions 会自动执行单元测试、构建并发布到 GitHub Pages，最后用 Playwright 对线上站点做冒烟验证，无需手动操作。
 
 ## ⚙️ 配置说明
 
@@ -139,7 +138,6 @@ npm run dev
 | `VITE_WORKER_BASE` | 构建时环境变量 | 可选，覆盖 Cloudflare Worker 地址 |
 | `VITE_API_BASE` | 构建时环境变量 | 可选，Vercel 部署地址；配置后激活走服务端校验 |
 | `VITE_STRICT_ACTIVATION` | 构建时环境变量 | 设为 `true` 时后端不可用即拒绝激活（默认允许离线回退） |
-| `VITE_BASE_PATH` | GitHub Actions | 部署路径前缀，CI 中已自动配置 |
 
 ## 🔌 接口说明
 

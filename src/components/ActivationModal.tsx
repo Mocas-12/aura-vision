@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { activateWithCode } from '../utils/quota'
 
 type Props = {
@@ -24,7 +24,6 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
   const [shake, setShake] = useState(0)
-  const inputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -145,7 +144,6 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
             >
               <div key={shake} className={shake > 0 ? 'shake-once' : ''}>
                 <input
-                  ref={inputRef}
                   autoFocus
                   className={`cyber-input w-full px-4 py-3 text-base ${error ? 'border-red-400/60' : ''}`}
                   placeholder="CY□□□S1X"

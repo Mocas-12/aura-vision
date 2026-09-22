@@ -108,14 +108,9 @@ export function useRecognition({
     setBusyState(true)
     if (isManual) setManualLoading(true)
     setProc('fetching')
-    if (abortRef.current) {
-      try {
-        abortRef.current.abort()
-      } catch (err) {
-        console.warn('abort previous request error', err)
-      }
-      abortRef.current = null
-    }
+    // abortRef is always null here: the manual branch above already aborted and
+    // nulled it (no awaits in between), and the auto branch only gets here with
+    // busyRef false — every path that clears busy also nulls abortRef.
     abortRef.current = new AbortController()
     const controller = abortRef.current
     try {

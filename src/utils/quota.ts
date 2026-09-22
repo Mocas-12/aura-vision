@@ -55,7 +55,7 @@ export function remaining(): number {
   return Math.max(0, QUOTA - used)
 }
 
-export type ActivationResult = { ok: boolean; offline?: boolean; rateLimited?: boolean }
+type ActivationResult = { ok: boolean; offline?: boolean; rateLimited?: boolean }
 
 /**
  * Validate an activation code. Server-first when VITE_API_BASE is configured;

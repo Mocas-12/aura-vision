@@ -29,7 +29,6 @@ jobs:
 
       - name: Build
         env:
-          VITE_BASE_PATH: /aura-vision/
           # Vercel deployment base (e.g. https://aura-vision.vercel.app).
           # Set it as a repository variable to enable server-side activation;
           # leave it empty to fall back to local activation checks.

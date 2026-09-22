@@ -123,9 +123,8 @@ npm run dev
 | `npm run test` | Vitest unit tests |
 | `npm run e2e` | Playwright smoke tests (real activation chain via production API) |
 | `npm run build` | TypeScript type check + production build |
-| `npm run deploy` | Manually deploy to GitHub Pages (gh‑pages branch) |
 
-Deployment note: after pushing to the `main` branch, GitHub Actions automatically runs unit tests, builds and publishes to GitHub Pages (injecting `VITE_BASE_PATH=/aura-vision/` at build time), then smoke-tests the live site with Playwright; no manual steps required.
+Deployment note: after pushing to the `main` branch, GitHub Actions automatically runs unit tests, builds and publishes to GitHub Pages, then smoke-tests the live site with Playwright; no manual steps required.
 
 ## ⚙️ Configuration
 
@@ -139,7 +138,6 @@ Deployment note: after pushing to the `main` branch, GitHub Actions automaticall
 | `VITE_WORKER_BASE` | Build-time env | Optional, overrides the Cloudflare Worker URL |
 | `VITE_API_BASE` | Build-time env | Optional, Vercel deployment base URL; when set, activation goes through server-side validation |
 | `VITE_STRICT_ACTIVATION` | Build-time env | Set to `true` to reject activation when the backend is unreachable (offline fallback is allowed by default) |
-| `VITE_BASE_PATH` | GitHub Actions | Deployment path prefix, auto-configured in CI |
 
 ## 🔌 API Reference
 
