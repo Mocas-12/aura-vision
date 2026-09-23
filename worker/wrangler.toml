@@ -8,7 +8,6 @@ compatibility_date = "2026-09-01"
 ALLOWED_ORIGINS = ""
 
 [[kv_namespaces]]
-# Create the namespace and paste its id:
-#   npx wrangler kv namespace create STATS
+# aura-vision-pv：站点 PV 计数（键 SITE_PV，现网已有真实数据）
 binding = "STATS"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "904be68110fd4210a1fc0b6211b845fe"
