@@ -131,16 +131,17 @@ async function identify(request, env, cors) {
 
 async function statsGet(env, cors) {
   if (!env.STATS) return json({ error: 'STATS KV binding not configured' }, 500, cors)
-  const value = parseInt((await env.STATS.get('site_pv')) ?? '0', 10)
+  // KV 键与线上既有数据一致为大写 SITE_PV；HTTP 响应字段仍为小写 site_pv（前端契约）
+  const value = parseInt((await env.STATS.get('SITE_PV')) ?? '0', 10)
   return json({ site_pv: Number.isNaN(value) ? 0 : value }, 200, cors)
 }
 
 async function statsInc(env, cors) {
   if (!env.STATS) return json({ error: 'STATS KV binding not configured' }, 500, cors)
-  const current = parseInt((await env.STATS.get('site_pv')) ?? '0', 10) || 0
+  const current = parseInt((await env.STATS.get('SITE_PV')) ?? '0', 10) || 0
   // KV is eventually consistent; concurrent increments may collapse. Fine for
   // a vanity metric — use Durable Objects if exact counts ever matter.
-  await env.STATS.put('site_pv', String(current + 1))
+  await env.STATS.put('SITE_PV', String(current + 1))
   return json({ ok: true }, 200, cors)
 }
 
