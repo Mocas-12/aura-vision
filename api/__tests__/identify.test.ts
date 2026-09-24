@@ -75,7 +75,8 @@ function freshHeaders() {
 }
 
 function upstreamPrompt(callIndex: number) {
-  return JSON.parse(captured[callIndex].body).messages[0].content[1].text as string
+  // messages[0] is the Chinese-enforcing system message; user text follows.
+  return JSON.parse(captured[callIndex].body).messages[1].content[1].text as string
 }
 
 describe('identify handler', () => {
@@ -149,7 +150,8 @@ describe('identify handler', () => {
     expect((opts.headers as Record<string, string>).Authorization).toBe('Bearer test-key')
     const payload = JSON.parse(body)
     expect(payload.model).toBe('meta/llama-3.2-11b-vision-instruct')
-    const parts = payload.messages[0].content
+    expect(payload.messages[0]).toEqual({ role: 'system', content: expect.stringContaining('简体中文') })
+    const parts = payload.messages[1].content
     expect(parts[0].image_url.url).toBe(SMALL_IMAGE)
     expect(parts[1].text).toMatch(/专业的视觉分析专家/) // default prompt
   })

@@ -25,6 +25,11 @@ function sanitizePrompt(input) {
   return text
 }
 
+// Enforced as a system message so every client prompt inherits it — vision
+// models tend to drift into English on English/Japanese packaging otherwise.
+const SYSTEM_PROMPT =
+  '你必须始终使用简体中文回答。品牌名、型号等专有名词可保留原文，但其余所有说明文字一律使用简体中文，禁止输出英文句子。'
+
 function buildPayload(model, base64, prompt, stream) {
   return JSON.stringify({
     model,
@@ -32,6 +37,7 @@ function buildPayload(model, base64, prompt, stream) {
     stream,
     temperature: 0.2,
     messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
       {
         role: 'user',
         content: [

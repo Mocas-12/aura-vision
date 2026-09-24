@@ -62,6 +62,7 @@ describe('worker identify (stream mode)', () => {
     const payload = JSON.parse(init.body)
     expect(payload.stream).toBe(true)
     expect(payload.model).toBe('meta/llama-3.2-11b-vision-instruct')
+    expect(payload.messages[0]).toEqual({ role: 'system', content: expect.stringContaining('简体中文') })
     expect(init.headers.Authorization).toBe('Bearer test-key')
     expect(init.headers.Accept).toBe('text/event-stream')
   })

@@ -97,7 +97,7 @@ function recognitionFromJsonText(responseText: string): Recognition {
   return buildRecognition(text)
 }
 
-const DEFAULT_USER_PROMPT = '请用中文总结图片内容或说明文大意，最多30字。'
+const DEFAULT_USER_PROMPT = '请用简体中文总结图片内容或说明文大意，最多30字，不要输出英文句子。'
 
 export async function recognizeNearestCenterObject(opts: {
   imageDataUrl: string
