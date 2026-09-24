@@ -80,6 +80,15 @@ describe('recognizeNearestCenterObjectStream', () => {
     expect(rec?.facts).toContain('诊断时间')
   })
 
+  it('401（密钥未配置/失效）给出明确的人话提示', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('{"error":"NVIDIA request failed","status":401}', { status: 401 }),
+    )
+    const rec = await recognizeNearestCenterObjectStream({ imageDataUrl: IMAGE })
+    expect(rec?.name).toBe('识别失败')
+    expect(rec?.intro).toContain('识别密钥未配置或已失效')
+  })
+
   it('畸形 SSE 行被跳过而不中断整个流', async () => {
     const encoder = new TextEncoder()
     const body = new ReadableStream<Uint8Array>({

@@ -67,6 +67,10 @@ function failureRecognition(e: unknown): Recognition {
   if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
     intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
   }
+  // Upstream auth failure — the operator-facing root cause, in plain words.
+  if (typeof intro === 'string' && intro.includes('服务器响应异常 (401)')) {
+    intro = '服务端识别密钥未配置或已失效（401）'
+  }
   return {
     name: '识别失败',
     intro: `${name ? name + ': ' : ''}${intro}`,

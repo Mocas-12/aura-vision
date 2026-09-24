@@ -145,17 +145,23 @@ export function useRecognition({
     })
     try {
       const timeoutTag = Symbol('timeout')
+      // The 8s guard measures time-to-first-token, but a stream that settles
+      // early on its own (error reply, or JSON fallback that never deltas)
+      // must surface immediately instead of waiting out the clock.
       const head = await Promise.race([
         firstToken.then(() => 'first-token' as const),
+        streamPromise.then(() => 'stream-done' as const),
         new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 8000)),
       ])
       const done =
         head === 'timeout'
           ? timeoutTag
-          : await Promise.race([
-              streamPromise,
-              new Promise<symbol>((resolve) => setTimeout(() => resolve(timeoutTag), 30000)),
-            ])
+          : head === 'stream-done'
+            ? await streamPromise
+            : await Promise.race([
+                streamPromise,
+                new Promise<symbol>((resolve) => setTimeout(() => resolve(timeoutTag), 30000)),
+              ])
       if (done === timeoutTag) {
         console.warn('Processing Status: timeout')
         setProc('timeout')
