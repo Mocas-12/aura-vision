@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { recognizeNearestCenterObjectStream } from '../ai-service'
 
-const IMAGE = 'data:image/jpeg;base64,' + Buffer.from('tiny-frame').toString('base64')
+// btoa('tiny-frame') — a literal keeps this file free of Node-only globals.
+const IMAGE = 'data:image/jpeg;base64,dGlueS1mcmFtZQ=='
 
 function sseFetchResponse(events: unknown[]) {
   const encoder = new TextEncoder()
@@ -48,9 +49,7 @@ describe('recognizeNearestCenterObjectStream', () => {
 
     const [, init] = fetchMock.mock.calls[0]
     expect(JSON.parse(init.body).stream).toBe(true)
-    expect(JSON.parse(init.body).imageDataUrl).toBe(
-      Buffer.from('tiny-frame').toString('base64'),
-    )
+    expect(JSON.parse(init.body).imageDataUrl).toBe('dGlueS1mcmFtZQ==')
     expect(init.headers.Accept).toBe('text/event-stream')
   })
 
