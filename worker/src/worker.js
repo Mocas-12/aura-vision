@@ -87,6 +87,9 @@ async function identify(request, env, cors) {
   }
 
   const prompt = sanitizePrompt(input?.prompt)
+  // stream:true → pass NVIDIA's SSE straight through to the client; a plain
+  // JSON reply (old clients / stream:false) keeps the buffered contract.
+  const streamMode = input?.stream === true
   const models = [env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-11b-vision-instruct', FALLBACK_MODEL]
   for (const model of models) {
     let res
@@ -95,13 +98,13 @@ async function identify(request, env, cors) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'application/json',
+          Accept: streamMode ? 'text/event-stream' : 'application/json',
           Authorization: `Bearer ${env.NVIDIA_API_KEY}`,
         },
         body: JSON.stringify({
           model,
           max_tokens: 1024,
-          stream: false,
+          stream: streamMode,
           temperature: 0.2,
           messages: [
             {
@@ -113,13 +116,24 @@ async function identify(request, env, cors) {
             },
           ],
         }),
-        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        // Streaming answers trickle for a while; only cap the idle-free total.
+        signal: AbortSignal.timeout(streamMode ? 30_000 : UPSTREAM_TIMEOUT_MS),
       })
     } catch (e) {
       return json({ error: 'NVIDIA request failed', message: String(e) }, 502, cors)
     }
     if (res.status === 404) continue // try the next model in the chain
     if (!res.ok) return json({ error: 'NVIDIA request failed', status: res.status }, res.status, cors)
+    if (streamMode) {
+      return new Response(res.body, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          ...cors,
+        },
+      })
+    }
     const payload = await res.json().catch(() => null)
     if (!payload || !extractContent(payload)) {
       return json({ error: 'AI 返回内容为空', model_used: model }, 502, cors)

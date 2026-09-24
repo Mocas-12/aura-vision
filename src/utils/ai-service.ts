@@ -60,6 +60,41 @@ export function buildRecognition(rawText: string): Recognition {
   return { name: '识别结果', intro: text, facts: '' }
 }
 
+/** Map a thrown fetch/abort error into the failure Recognition shape. */
+function failureRecognition(e: unknown): Recognition {
+  const name = (e as { name?: string })?.name
+  let intro = (e as { message?: string })?.message || String(e)
+  if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
+    intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
+  }
+  return {
+    name: '识别失败',
+    intro: `${name ? name + ': ' : ''}${intro}`,
+    facts: diagText(),
+  }
+}
+
+/** Parse a buffered chat-completion response body into a Recognition. */
+function recognitionFromJsonText(responseText: string): Recognition {
+  let json: unknown
+  try {
+    json = JSON.parse(responseText)
+  } catch (err) {
+    console.error('服务器返回原文:', responseText)
+    if (err instanceof SyntaxError) {
+      return { name: '识别失败', intro: '服务器返回格式异常', facts: '' }
+    }
+    throw err
+  }
+  const text = extractModelText(json)
+  if (!text) {
+    throw new Error('AI 返回内容为空')
+  }
+  return buildRecognition(text)
+}
+
+const DEFAULT_USER_PROMPT = '请用中文总结图片内容或说明文大意，最多30字。'
+
 export async function recognizeNearestCenterObject(opts: {
   imageDataUrl: string
   prompt?: string
@@ -69,7 +104,7 @@ export async function recognizeNearestCenterObject(opts: {
   const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '').replace(/^data:[^;]+;base64,/i, '')
   const requestBody = {
     imageDataUrl: cleanImageUrl,
-    prompt: opts.prompt ?? '请用中文总结图片内容或说明文大意，最多30字。',
+    prompt: opts.prompt ?? DEFAULT_USER_PROMPT,
   }
   try {
     const res = await fetch(url, {
@@ -83,32 +118,82 @@ export async function recognizeNearestCenterObject(opts: {
       console.error('Worker response error', res.status, responseText)
       throw new Error(`服务器响应异常 (${res.status}): ${responseText}`)
     }
-    let json: unknown
-    try {
-      json = JSON.parse(responseText)
-    } catch (err) {
-      console.error('服务器返回原文:', responseText)
-      if (err instanceof SyntaxError) {
-        return { name: '识别失败', intro: '服务器返回格式异常', facts: '' }
-      }
-      throw err
-    }
-    const text = extractModelText(json)
-    if (!text) {
-      throw new Error('AI 返回内容为空')
-    }
-    return buildRecognition(text)
+    return recognitionFromJsonText(responseText)
   } catch (e) {
     console.error('NVIDIA API network error', e)
-    const name = (e as { name?: string })?.name
-    let intro = (e as { message?: string })?.message || String(e)
-    if (name === 'TypeError' && typeof intro === 'string' && intro.includes('Load failed')) {
-      intro = '识别受阻：请检查手机是否开启了“内容拦截器”或“私密转送”，或尝试更换网络。'
+    return failureRecognition(e)
+  }
+}
+
+/**
+ * Streaming twin of recognizeNearestCenterObject. Sends `stream: true` and
+ * forwards each SSE content delta to onDelta as it arrives; resolves with the
+ * final Recognition. Graceful degradation: if the backend does not answer
+ * with an SSE stream (old Worker without stream support), the JSON body is
+ * parsed whole and onDelta never fires — callers must handle both cases.
+ */
+export async function recognizeNearestCenterObjectStream(opts: {
+  imageDataUrl: string
+  prompt?: string
+  signal?: AbortSignal
+  onDelta?: (delta: string, accumulated: string) => void
+}): Promise<Recognition | null> {
+  const url = `${WORKER_BASE}?t=${Date.now()}`
+  const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '').replace(/^data:[^;]+;base64,/i, '')
+  const requestBody = {
+    imageDataUrl: cleanImageUrl,
+    prompt: opts.prompt ?? DEFAULT_USER_PROMPT,
+    stream: true,
+  }
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify(requestBody),
+      signal: opts.signal,
+    })
+    const contentType = res.headers.get('content-type') ?? ''
+    if (!res.ok) {
+      const responseText = await res.text()
+      console.error('Worker response error', res.status, responseText)
+      throw new Error(`服务器响应异常 (${res.status}): ${responseText}`)
     }
-    return {
-      name: '识别失败',
-      intro: `${name ? name + ': ' : ''}${intro}`,
-      facts: diagText(),
+    if (!contentType.includes('text/event-stream')) {
+      // Backend predates stream support — one buffered JSON payload.
+      return recognitionFromJsonText(await res.text())
     }
+    const reader = res.body?.getReader()
+    if (!reader) {
+      throw new Error('响应流不可读')
+    }
+    const decoder = new TextDecoder('utf-8')
+    let buffer = ''
+    let accumulated = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) continue
+        const payload = trimmed.slice(5).trim()
+        if (!payload || payload === '[DONE]') continue
+        try {
+          const delta = extractModelText(JSON.parse(payload))
+          if (delta) {
+            accumulated += delta
+            opts.onDelta?.(delta, accumulated)
+          }
+        } catch {
+          // skip malformed SSE lines instead of failing the whole stream
+        }
+      }
+    }
+    return buildRecognition(accumulated)
+  } catch (e) {
+    console.error('NVIDIA API stream error', e)
+    return failureRecognition(e)
   }
 }

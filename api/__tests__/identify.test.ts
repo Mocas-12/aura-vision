@@ -21,11 +21,13 @@ function enqueueUpstream(responses: { status: number; body?: unknown }[]) {
     return {
       setTimeout() {},
       on() {},
+      resume() {},
       end(body?: Buffer) {
         captured.push({ opts, body: String(body ?? '') })
         setImmediate(() => {
           cb({
             statusCode: next.status,
+            resume() {},
             on(event: string, handler: (c?: Buffer) => void) {
               if (event === 'data') handler(Buffer.from(JSON.stringify(next.body ?? {})))
               if (event === 'end') handler()
@@ -213,5 +215,34 @@ describe('identify handler', () => {
     expect(res.statusCode).toBe(502)
     expect(json().error).toMatch(/NVIDIA request failed/)
     expect(json().message).toMatch(/ECONNRESET/)
+  })
+
+  it('stream:true 时以 SSE 头透传上游分块', async () => {
+    const ssePayload = { choices: [{ delta: { content: '流' } }] }
+    enqueueUpstream([{ status: 200, body: ssePayload }])
+    const { res } = jsonRes()
+    await identify(jsonReq('POST', { imageDataUrl: SMALL_IMAGE, stream: true }, freshHeaders()), res)
+    expect(res.statusCode).toBe(0) // sendJson never ran; body was piped
+    expect(res.headers['Content-Type']).toBe('text/event-stream; charset=utf-8')
+    expect(res.headers['Cache-Control']).toBe('no-cache')
+    expect(res.written.join('')).toBe(JSON.stringify(ssePayload))
+    // Upstream call carried stream:true and the SSE Accept header.
+    expect(JSON.parse(captured[0].body).stream).toBe(true)
+    expect((captured[0].opts.headers as Record<string, string>).Accept).toBe('text/event-stream')
+  })
+
+  it('stream:true 下首个模型 404 仍回退到下一个模型', async () => {
+    enqueueUpstream([
+      { status: 404, body: { error: 'model not found' } },
+      { status: 200, body: { choices: [{ delta: { content: 'ok' } }] } },
+    ])
+    const { res } = jsonRes()
+    await identify(jsonReq('POST', { imageDataUrl: SMALL_IMAGE, stream: true }, freshHeaders()), res)
+    expect(res.headers['Content-Type']).toBe('text/event-stream; charset=utf-8')
+    expect(res.written.join('')).toBe(JSON.stringify({ choices: [{ delta: { content: 'ok' } }] }))
+    expect(captured.map((c) => JSON.parse(c.body).model)).toEqual([
+      'meta/llama-3.2-11b-vision-instruct',
+      'meta/llama-3.2-90b-vision-instruct',
+    ])
   })
 })

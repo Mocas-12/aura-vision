@@ -23,9 +23,10 @@ export default function App() {
     busy,
     manualLoading,
     streaming,
-    typedName,
-    typedIntro,
-    typedFacts,
+    liveText,
+    shownName,
+    shownIntro,
+    shownFacts,
     resultRef,
     triggerRecognize,
   } = useRecognition({
@@ -61,9 +62,10 @@ export default function App() {
         busy={busy}
         cameraReady={cameraReady}
         streaming={streaming}
-        typedName={typedName}
-        typedIntro={typedIntro}
-        typedFacts={typedFacts}
+        liveText={liveText}
+        shownName={shownName}
+        shownIntro={shownIntro}
+        shownFacts={shownFacts}
         autoMode={autoMode}
         onToggleAuto={setAutoMode}
         manualLoading={manualLoading}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import {
-  recognizeNearestCenterObject,
+  recognizeNearestCenterObjectStream,
   diagText,
   type Recognition,
 } from '../utils/ai-service'
@@ -47,11 +47,20 @@ export function useRecognition({
   const [silenceUntil, setSilenceUntil] = useState<number>(0)
   const lastSuccessRef = useRef<boolean>(false)
   const [manualLoading, setManualLoading] = useState(false)
+  // Accumulated text while an SSE answer is still streaming in; null when the
+  // current request is not streaming (not started / JSON fallback / finished).
+  const [liveText, setLiveText] = useState<string | null>(null)
+  // True once the latest result arrived via live streaming — its text is
+  // already fully displayed, so the typewriter must not replay it.
+  const [liveSource, setLiveSource] = useState(false)
 
   const [typedName, typingName] = useTypewriter(rec?.name ?? '', 15)
   const [typedIntro, typingIntro] = useTypewriter(rec?.intro ?? '', 10)
   const [typedFacts, typingFacts] = useTypewriter(rec?.facts ?? '', 10)
-  const streaming = typingName || typingIntro || typingFacts
+  const streaming = !liveSource && (typingName || typingIntro || typingFacts)
+  const shownName = streaming ? typedName : rec?.name ?? ''
+  const shownIntro = streaming ? typedIntro : rec?.intro ?? ''
+  const shownFacts = streaming ? typedFacts : rec?.facts ?? ''
 
   const triggerRecognize = useCallback(async (isManual: boolean = false) => {
     if (!cameraReady) return
@@ -108,23 +117,46 @@ export function useRecognition({
     setBusyState(true)
     if (isManual) setManualLoading(true)
     setProc('fetching')
+    setLiveText(null)
+    setLiveSource(false)
     // abortRef is always null here: the manual branch above already aborted and
     // nulled it (no awaits in between), and the auto branch only gets here with
     // busyRef false — every path that clears busy also nulls abortRef.
     abortRef.current = new AbortController()
     const controller = abortRef.current
+    // The 8s guard must only measure time-to-first-token; once tokens flow the
+    // overall 30s cap takes over, so a slow full answer is not punished.
+    let firstTokenArrived: (() => void) | undefined
+    const firstToken = new Promise<void>((resolve) => {
+      firstTokenArrived = resolve
+    })
+    let acc = ''
+    const streamPromise = recognizeNearestCenterObjectStream({
+      imageDataUrl: dataUrl,
+      signal: controller.signal,
+      onDelta: (_delta, accumulated) => {
+        if (acc === '') {
+          firstTokenArrived?.()
+          setLiveSource(true)
+        }
+        acc = accumulated
+        setLiveText(accumulated)
+      },
+    })
     try {
       const timeoutTag = Symbol('timeout')
-      const resultOrTimeout = await Promise.race([
-        recognizeNearestCenterObject({
-          imageDataUrl: dataUrl,
-          signal: controller.signal,
-        }),
-        new Promise<Recognition | symbol>((resolve) =>
-          setTimeout(() => resolve(timeoutTag), 8000),
-        ),
+      const head = await Promise.race([
+        firstToken.then(() => 'first-token' as const),
+        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 8000)),
       ])
-      if (resultOrTimeout === timeoutTag) {
+      const done =
+        head === 'timeout'
+          ? timeoutTag
+          : await Promise.race([
+              streamPromise,
+              new Promise<symbol>((resolve) => setTimeout(() => resolve(timeoutTag), 30000)),
+            ])
+      if (done === timeoutTag) {
         console.warn('Processing Status: timeout')
         setProc('timeout')
         setRec({ name: '识别超时', intro: '请重试', facts: diagText() })
@@ -134,7 +166,7 @@ export function useRecognition({
         if (isManual) setManualLoading(false)
         return
       }
-        const result = resultOrTimeout as Recognition | null
+      const result = done as Recognition | null
       if (result) {
         setRec(result)
         setProc('done')
@@ -191,6 +223,7 @@ export function useRecognition({
       setBusyState(false)
       abortRef.current = null
       if (isManual) setManualLoading(false)
+      setLiveText(null)
     }
   }, [cameraReady, autoMode, streaming, silenceUntil, setBusyState, videoRef, canvasRef, audioCtxRef, onQuotaExhausted])
 
@@ -208,7 +241,7 @@ export function useRecognition({
   }, [])
 
   useEffect(() => {
-    if (proc !== 'done') return
+    if (proc !== 'done' && liveText === null) return
     try {
       const el = resultRef.current
       if (el) {
@@ -217,7 +250,7 @@ export function useRecognition({
         }, 50)
       }
     } catch { void 0 }
-  }, [typedIntro, typedFacts, proc])
+  }, [typedIntro, typedFacts, proc, liveText])
 
   useEffect(() => {
     if (proc === 'done' && !streaming && lastSuccessRef.current) {
@@ -230,9 +263,10 @@ export function useRecognition({
     busy,
     manualLoading,
     streaming,
-    typedName,
-    typedIntro,
-    typedFacts,
+    liveText,
+    shownName,
+    shownIntro,
+    shownFacts,
     resultRef,
     triggerRecognize,
   }

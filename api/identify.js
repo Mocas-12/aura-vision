@@ -25,11 +25,11 @@ function sanitizePrompt(input) {
   return text
 }
 
-function callNvidia(model, base64, prompt) {
-  const payload = {
+function buildPayload(model, base64, prompt, stream) {
+  return JSON.stringify({
     model,
     max_tokens: 1024,
-    stream: false,
+    stream,
     temperature: 0.2,
     messages: [
       {
@@ -40,8 +40,11 @@ function callNvidia(model, base64, prompt) {
         ],
       },
     ],
-  }
-  const body = JSON.stringify(payload)
+  })
+}
+
+function callNvidia(model, base64, prompt) {
+  const body = buildPayload(model, base64, prompt, false)
   return new Promise((resolve, reject) => {
     const req = https.request(
       {
@@ -70,6 +73,32 @@ function callNvidia(model, base64, prompt) {
           resolve({ status: res.statusCode || 500, parsed })
         })
       }
+    )
+    req.setTimeout(UPSTREAM_TIMEOUT_MS, () => req.destroy(new Error('upstream timeout')))
+    req.on('error', reject)
+    req.end(body)
+  })
+}
+
+// Streaming variant: resolves with response headers plus the raw SSE stream;
+// the caller pipes it through to the client untouched.
+function callNvidiaStream(model, base64, prompt) {
+  const body = buildPayload(model, base64, prompt, true)
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: NVIDIA_HOST,
+        port: 443,
+        path: '/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          Authorization: 'Bearer ' + process.env.NVIDIA_API_KEY,
+          'Content-Length': Buffer.byteLength(body),
+        },
+      },
+      (up) => resolve({ status: up.statusCode || 500, stream: up })
     )
     req.setTimeout(UPSTREAM_TIMEOUT_MS, () => req.destroy(new Error('upstream timeout')))
     req.on('error', reject)
@@ -139,6 +168,40 @@ module.exports = async function (req, res) {
   }
 
   const prompt = sanitizePrompt(input.prompt)
+
+  if (input.stream === true) {
+    for (const model of MODEL_CHAIN) {
+      let result
+      try {
+        result = await callNvidiaStream(model, base64, prompt)
+      } catch (e) {
+        sendJson(res, 502, { error: 'NVIDIA request failed', message: String((e && e.message) || e) })
+        return
+      }
+      if (result.status === 404) {
+        result.stream.resume() // drain and try the next model in the chain
+        continue
+      }
+      if (result.status >= 400) {
+        sendJson(res, result.status, { error: 'NVIDIA request failed', status: result.status })
+        return
+      }
+      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+      res.setHeader('Cache-Control', 'no-cache')
+      result.stream.on('data', (chunk) => res.write(chunk))
+      result.stream.on('end', () => res.end())
+      result.stream.on('error', () => {
+        try { res.end() } catch { void 0 }
+      })
+      // Stop burning upstream tokens when the client disconnects mid-stream.
+      res.on('close', () => {
+        try { result.stream.destroy() } catch { void 0 }
+      })
+      return
+    }
+    sendJson(res, 404, { error: 'No available vision model' })
+    return
+  }
 
   let lastStatus = 502
   for (const model of MODEL_CHAIN) {

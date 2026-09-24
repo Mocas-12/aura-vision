@@ -6,22 +6,34 @@ export interface MockRes {
   statusCode: number
   body: string
   headers: Record<string, string>
+  /** Chunks written via write() when the handler streams instead of sendJson. */
+  written: string[]
   setHeader(name: string, value: string): void
+  write(chunk: unknown): void
   end(chunk?: string): void
+  on(event: string, cb: () => void): void
 }
 
 export function mockRes(): MockRes {
-  const res: MockRes = {
+  const res = {
     statusCode: 0,
     body: '',
     headers: {},
-    setHeader(name, value) {
+    written: [],
+    closeHandlers: [] as Array<() => void>,
+    setHeader(name: string, value: string) {
       res.headers[name] = value
     },
-    end(chunk) {
+    write(chunk: unknown) {
+      res.written.push(String(chunk))
+    },
+    end(chunk?: string) {
       if (chunk) res.body += chunk
     },
-  }
+    on(event: string, cb: () => void) {
+      if (event === 'close') res.closeHandlers.push(cb)
+    },
+  } as MockRes & { closeHandlers: Array<() => void> }
   return res
 }
 
