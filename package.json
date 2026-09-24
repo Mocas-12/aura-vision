@@ -2,6 +2,7 @@
   "name": "aura-vision",
   "private": true,
   "version": "1.0.0",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

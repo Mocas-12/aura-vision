@@ -199,7 +199,7 @@ Deployment note: after pushing to the `main` branch, GitHub Actions automaticall
 
 ## 📄 License
 
-This project is for learning and demonstration purposes only; no open-source license is set. Contact the author before reuse.
+This project is licensed under the [MIT License](LICENSE) — free to use, modify and distribute, including commercial use, as long as the copyright notice is preserved.
 
 ---
 
