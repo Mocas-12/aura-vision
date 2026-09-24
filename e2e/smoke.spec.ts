@@ -44,3 +44,24 @@ test('正确激活码解锁设备后自动关闭', async ({ page }) => {
   // Success flashes for ~1.4s, then the modal closes itself.
   await expect(dialog).toBeHidden({ timeout: 5_000 })
 })
+
+// 核心链路守护：识别请求被本地 e2e abort（保持确定性），此断言只在 CI 对真实
+// 站点运行。链路故障（如密钥缺失 401）时失败态持续存在，断言失败 → 部署被拦。
+test('生产识别链路：自动识别产出简体中文结果', async ({ page }) => {
+  test.skip(!process.env.E2E_BASE_URL, '仅生产 e2e（E2E_BASE_URL）运行')
+  test.setTimeout(120_000)
+  await page.unroute(/workers\.dev|busuanzi/)
+  // 识别放行；/stats 与 busuanzi 仍阻断，避免 CI 每跑一次涨一次计数。
+  await page.route(/busuanzi/, (route) => route.abort())
+  await page.route(/workers\.dev\/stats/, (route) => route.abort())
+
+  await page.goto(APP)
+  await expect(page.locator('.scan-frame')).toBeVisible()
+  await expect(page.getByText('待机')).toBeVisible({ timeout: 15_000 })
+
+  // 自动模式每 5s 重试：60s 内出现任意真实结果即可；持续失败则在此失败。
+  const headline = page.locator('.grad-title')
+  await expect(headline).not.toHaveText(/识别失败|识别超时|等待识别/, { timeout: 60_000 })
+  // 正文必须是中文（system 级中文强制的落地断言）。
+  await expect(page.locator('.cyber-body')).toContainText(/[\u4e00-\u9fff]/)
+})
