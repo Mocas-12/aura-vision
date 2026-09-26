@@ -18,22 +18,42 @@ const ALLOW_DEFAULT = [
 
 const NVIDIA_BASE = 'https://integrate.api.nvidia.com/v1'
 const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024
+const MAX_BODY_BYTES = 8 * 1024 * 1024
 const UPSTREAM_TIMEOUT_MS = 8000
 
-const DEFAULT_PROMPT =
-  '你是一个专业的视觉分析专家。请识别图中的物品，并按以下格式用中文回复：\n\n' +
-  '【名称】：（如果是日文/英文，请翻译成中文名称）\n\n' +
-  '【介绍】：（简述该物品的用途、主要特点。如果包装上有日语或英语说明，请提取核心信息并转化为中文介绍）\n' +
-  '要求：语言专业且亲切，介绍字数控制在 80 字以内。\n' +
-  '特别注意包装上的细小文字，优先识别品牌名和商品类别。'
+// In-memory per-isolate limiter (same caveat as the Vercel api): each cold
+// start gets a fresh map. For hard cross-instance limits put a Cloudflare WAF
+// rate-limiting rule (free plan includes one) in front of this route.
+const rateBuckets = new Map()
+function checkRateLimit(request, { windowMs = 60 * 1000, max = 10 } = {}) {
+  const ip =
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    'unknown'
+  const now = Date.now()
+  let bucket = rateBuckets.get(ip)
+  if (!bucket || now > bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + windowMs }
+    rateBuckets.set(ip, bucket)
+  }
+  bucket.count += 1
+  if (rateBuckets.size > 5000) {
+    for (const [key, b] of rateBuckets) {
+      if (now > b.resetAt) rateBuckets.delete(key)
+    }
+  }
+  return {
+    limited: bucket.count > max,
+    retryAfterSec: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)),
+  }
+}
+
+// Prompt constants live in one shared CJS module consumed by BOTH backends
+// (worker + Vercel api) — structural protection against copy drift.
+import { SYSTEM_PROMPT, DEFAULT_PROMPT } from '../../api/_prompts.js'
 
 // Both are real vision models on NVIDIA NIM; the 90B variant is the 404 fallback.
 const FALLBACK_MODEL = 'meta/llama-3.2-90b-vision-instruct'
-
-// Enforced as a system message so every client prompt inherits it — vision
-// models tend to drift into English on English/Japanese packaging otherwise.
-const SYSTEM_PROMPT =
-  '你必须始终使用简体中文回答。品牌名、型号等专有名词可保留原文，但其余所有说明文字一律使用简体中文，禁止输出英文句子。'
 
 function corsHeaders(env, request) {
   const origin = request.headers.get('Origin') ?? ''
@@ -59,6 +79,32 @@ function json(data, status, headers) {
   })
 }
 
+// Stream the request body with a hard byte cap; returns null when the cap is
+// exceeded (deterministic even for chunked bodies without content-length).
+async function readBodyCapped(request, maxBytes) {
+  const reader = request.body?.getReader()
+  if (!reader) return ''
+  const chunks = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > maxBytes) {
+      try { await reader.cancel() } catch { void 0 }
+      return null
+    }
+    chunks.push(value)
+  }
+  const merged = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(merged)
+}
+
 // Client prompts are honored but sanitized: plain text, bounded length.
 function sanitizePrompt(input) {
   const text = typeof input === 'string' ? input.replace(/\s+/g, ' ').trim() : ''
@@ -77,9 +123,27 @@ function extractContent(payload) {
 }
 
 async function identify(request, env, cors) {
+  const limit = checkRateLimit(request, { max: 10, windowMs: 60 * 1000 })
+  if (limit.limited) {
+    return json(
+      { error: 'Too many requests, please retry later' },
+      429,
+      { ...cors, 'Retry-After': String(limit.retryAfterSec) },
+    )
+  }
+  // Advisory pre-parse cap on the declared size; chunked bodies without a
+  // content-length are still caught by the capped reader below.
+  const declared = Number(request.headers.get('content-length') ?? '0')
+  if (declared > MAX_BODY_BYTES) {
+    return json({ error: 'Request body too large' }, 413, cors)
+  }
+  const bodyText = await readBodyCapped(request, MAX_BODY_BYTES)
+  if (bodyText === null) {
+    return json({ error: 'Request body too large' }, 413, cors)
+  }
   let input
   try {
-    input = await request.json()
+    input = JSON.parse(bodyText)
   } catch {
     return json({ error: 'Invalid JSON body' }, 400, cors)
   }
@@ -156,7 +220,16 @@ async function statsGet(env, cors) {
   return json({ site_pv: Number.isNaN(value) ? 0 : value }, 200, cors)
 }
 
-async function statsInc(env, cors) {
+async function statsInc(env, cors, request) {
+  // The counter is a vanity metric, but an unauthenticated write endpoint
+  // should still not be floodable — a small per-IP budget is enough.
+  const limit = checkRateLimit(request, { max: 30, windowMs: 60 * 1000 })
+  if (limit.limited) {
+    return json({ error: 'Too many requests, please retry later' }, 429, {
+      ...cors,
+      'Retry-After': String(limit.retryAfterSec),
+    })
+  }
   if (!env.STATS) return json({ error: 'STATS KV binding not configured' }, 500, cors)
   const current = parseInt((await env.STATS.get('SITE_PV')) ?? '0', 10) || 0
   // KV is eventually consistent; concurrent increments may collapse. Fine for
@@ -177,7 +250,7 @@ export default {
     }
     if (pathname === '/' && request.method === 'POST') return identify(request, env, cors)
     if (pathname === '/stats' && request.method === 'GET') return statsGet(env, cors)
-    if (pathname === '/stats' && request.method === 'POST') return statsInc(env, cors)
+    if (pathname === '/stats' && request.method === 'POST') return statsInc(env, cors, request)
 
     return json({ error: 'Not Found' }, 404, cors)
   },

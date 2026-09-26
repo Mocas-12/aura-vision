@@ -113,4 +113,34 @@ describe('useRecognition', () => {
     await pending
     expect(result.current.rec?.name).toBe('识别超时')
   })
+
+  it('结构化 JSON 流式期间实时解析出 name/intro，完成后清空直播态', async () => {
+    vi.useFakeTimers()
+    let resolve!: (r: { name: string; intro: string; facts: string }) => void
+    streamMock.mockImplementation((opts: {
+      onDelta?: (delta: string, accumulated: string) => void
+    }) => {
+      opts.onDelta?.('{"name":"玩具', '{"name":"玩具')
+      opts.onDelta?.('汽车","intro":"儿童玩', '{"name":"玩具汽车","intro":"儿童玩')
+      return new Promise((res) => {
+        resolve = res
+      })
+    })
+    const { result } = setup()
+    act(() => {
+      void result.current.triggerRecognize(true)
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1) // 冲刷微任务，让首 token 竞速落定
+    })
+    expect(result.current.liveName).toBe('玩具汽车')
+    expect(result.current.liveText).toBe('儿童玩')
+    await act(async () => {
+      resolve({ name: '玩具汽车', intro: '儿童玩具', facts: '' })
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(result.current.rec).toEqual({ name: '玩具汽车', intro: '儿童玩具', facts: '' })
+    expect(result.current.liveName).toBeNull()
+    expect(result.current.liveText).toBeNull()
+  })
 })

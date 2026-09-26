@@ -24,6 +24,7 @@ export default function App() {
     manualLoading,
     streaming,
     liveText,
+    liveName,
     shownName,
     shownIntro,
     shownFacts,
@@ -63,6 +64,7 @@ export default function App() {
         cameraReady={cameraReady}
         streaming={streaming}
         liveText={liveText}
+        liveName={liveName}
         shownName={shownName}
         shownIntro={shownIntro}
         shownFacts={shownFacts}

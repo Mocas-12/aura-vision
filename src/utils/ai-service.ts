@@ -39,6 +39,8 @@ export function extractModelText(json: unknown): string {
 /** Clean raw model output and shape it into a Recognition. */
 export function buildRecognition(rawText: string): Recognition {
   const text = String(rawText)
+      .replace(/^```(?:json)?\s*/i, '') // tolerate markdown code fences
+      .replace(/```\s*$/, '')
       .replace(/\r\n/g, '\n')
       .replace(/\n{2,}/g, '\n')
       .replace(/[ \t]{2,}/g, ' ')
@@ -97,7 +99,25 @@ function recognitionFromJsonText(responseText: string): Recognition {
   return buildRecognition(text)
 }
 
-const DEFAULT_USER_PROMPT = '请用简体中文总结图片内容或说明文大意，最多30字，不要输出英文句子。'
+const DEFAULT_USER_PROMPT =
+  '识别图中物品。只输出一行JSON，格式：{"name":"物品中文名，不超过6个字","intro":"不超过60字的简体中文介绍，专业且亲切，不要输出英文句子"}。不要输出JSON以外的任何内容。'
+
+/**
+ * Best-effort extraction of the {"name","intro"} fields from a *partial* JSON
+ * stream, so the UI can show readable text while tokens are still arriving.
+ * Returns null when the text does not look like the structured shape.
+ */
+export function partialStructured(text: string): { name: string; intro: string } | null {
+  if (!text.includes('"name"')) return null
+  const nameMatch = text.match(/"name"\s*:\s*"((?:[^"\\]|\\.)*)/)
+  if (!nameMatch) return null
+  const introMatch = text.match(/"intro"\s*:\s*"((?:[^"\\]|\\.)*)/)
+  const unescape = (s: string) => s.replace(/\\(["\\/])/g, '$1')
+  return {
+    name: unescape(nameMatch[1]),
+    intro: introMatch ? unescape(introMatch[1]) : '',
+  }
+}
 
 export async function recognizeNearestCenterObject(opts: {
   imageDataUrl: string

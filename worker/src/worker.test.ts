@@ -10,10 +10,16 @@ const ENV = {
 const ORIGIN = 'https://mocas-12.github.io'
 const IMAGE = Buffer.from('tiny-frame').toString('base64')
 
-function identifyRequest(body: unknown) {
+function identifyRequest(body: unknown, ip?: string) {
   return new Request('https://worker.test/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: ORIGIN,
+      // Unique per request by default so the in-memory rate-limit buckets
+      // never leak between tests; the dedicated 429 test pins one IP.
+      'cf-connecting-ip': ip ?? `198.51.100.${Math.floor(Math.random() * 250) + 1}`,
+    },
     body: JSON.stringify(body),
   })
 }
@@ -112,5 +118,44 @@ describe('worker identify (stream mode)', () => {
     expect(res.status).toBe(429)
     expect(res.headers.get('Content-Type')).toContain('application/json')
     expect(await res.json()).toMatchObject({ error: 'NVIDIA request failed' })
+  })
+
+  it('声明体积超过 8MB 的请求体直接 413，不做上游调用', async () => {
+    const res = await worker.fetch(
+      identifyRequest({ imageDataUrl: `data:image/jpeg;base64,${'x'.repeat(9 * 1024 * 1024)}` }),
+      ENV,
+    )
+    expect(res.status).toBe(413)
+    expect(await res.json()).toMatchObject({ error: 'Request body too large' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('同一 IP 第 11 次 POST 被 429 并带 Retry-After', async () => {
+    const pinnedIp = '203.0.113.7'
+    for (let i = 0; i < 10; i++) {
+      const res = await worker.fetch(identifyRequest({}, pinnedIp), ENV)
+      expect(res.status).toBe(400) // 缺图片 → 400，但占满限流桶
+    }
+    const res = await worker.fetch(
+      identifyRequest({ imageDataUrl: `data:image/jpeg;base64,${IMAGE}` }, pinnedIp),
+      ENV,
+    )
+    expect(res.status).toBe(429)
+    expect(Number(res.headers.get('Retry-After'))).toBeGreaterThanOrEqual(1)
+  })
+
+  it('POST /stats 超 30 次/分后同样 429', async () => {
+    const pinnedIp = '203.0.113.8'
+    let last!: Response
+    for (let i = 0; i <= 30; i++) {
+      last = await worker.fetch(
+        new Request('https://worker.test/stats', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, 'cf-connecting-ip': pinnedIp },
+        }),
+        ENV,
+      )
+    }
+    expect(last.status).toBe(429)
   })
 })

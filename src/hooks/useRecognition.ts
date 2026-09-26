@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import {
   recognizeNearestCenterObjectStream,
+  partialStructured,
   diagText,
   type Recognition,
 } from '../utils/ai-service'
@@ -50,6 +51,9 @@ export function useRecognition({
   // Accumulated text while an SSE answer is still streaming in; null when the
   // current request is not streaming (not started / JSON fallback / finished).
   const [liveText, setLiveText] = useState<string | null>(null)
+  // Structured answers stream as JSON; partialStructured turns the arriving
+  // tokens into a readable object name for the headline before the final parse.
+  const [liveName, setLiveName] = useState<string | null>(null)
   // True once the latest result arrived via live streaming — its text is
   // already fully displayed, so the typewriter must not replay it.
   const [liveSource, setLiveSource] = useState(false)
@@ -113,7 +117,7 @@ export function useRecognition({
     out.height = targetSize
     const octx = out.getContext('2d')
     octx?.drawImage(crop, 0, 0, side, side, 0, 0, targetSize, targetSize)
-    const dataUrl = out.toDataURL('image/jpeg', 0.2).replace(/\s/g, '')
+    const dataUrl = out.toDataURL('image/jpeg', 0.5).replace(/\s/g, '')
     setBusyState(true)
     if (isManual) setManualLoading(true)
     setProc('fetching')
@@ -140,7 +144,9 @@ export function useRecognition({
           setLiveSource(true)
         }
         acc = accumulated
-        setLiveText(accumulated)
+        const partial = partialStructured(accumulated)
+        setLiveName(partial?.name ?? null)
+        setLiveText(partial ? partial.intro : accumulated)
       },
     })
     try {
@@ -230,6 +236,7 @@ export function useRecognition({
       abortRef.current = null
       if (isManual) setManualLoading(false)
       setLiveText(null)
+      setLiveName(null)
     }
   }, [cameraReady, autoMode, streaming, silenceUntil, setBusyState, videoRef, canvasRef, audioCtxRef, onQuotaExhausted])
 
@@ -270,6 +277,7 @@ export function useRecognition({
     manualLoading,
     streaming,
     liveText,
+    liveName,
     shownName,
     shownIntro,
     shownFacts,

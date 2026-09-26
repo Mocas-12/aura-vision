@@ -9,6 +9,8 @@ interface ResultPanelProps {
   streaming: boolean
   /** Accumulated SSE text while an answer is still streaming in; null otherwise. */
   liveText: string | null
+  /** Object name parsed mid-stream from the structured JSON shape; null otherwise. */
+  liveName: string | null
   shownName: string
   shownIntro: string
   shownFacts: string
@@ -26,6 +28,7 @@ export default function ResultPanel({
   cameraReady,
   streaming,
   liveText,
+  liveName,
   shownName,
   shownIntro,
   shownFacts,
@@ -122,7 +125,7 @@ export default function ResultPanel({
           style={{ height: 'auto', minHeight: '150px', maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto', padding: '15px' }}
           ref={resultRef}
         >
-          <div className="text-2xl font-semibold grad-title">{shownName || '等待识别…'}</div>
+          <div className="text-2xl font-semibold grad-title">{(liveName ?? shownName) || '等待识别…'}</div>
           <div className="grad-divider mt-2" />
           <div
             className="mt-2 text-sm whitespace-pre-wrap break-all cyber-body"

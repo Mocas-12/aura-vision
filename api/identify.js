@@ -1,16 +1,10 @@
 const https = require('https')
 const { applyCors, checkRateLimit, sendJson, readJsonBody } = require('./_util.js')
+const { SYSTEM_PROMPT, DEFAULT_PROMPT } = require('./_prompts.js')
 
 const NVIDIA_HOST = 'integrate.api.nvidia.com'
 const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024
 const UPSTREAM_TIMEOUT_MS = 8000
-
-const DEFAULT_PROMPT =
-  '你是一个专业的视觉分析专家。请识别图中的物品，并按以下格式用中文回复：\n\n' +
-  '【名称】：（如果是日文/英文，请翻译成中文名称）\n\n' +
-  '【介绍】：（简述该物品的用途、主要特点。如果包装上有日语或英语说明，请提取核心信息并转化为中文介绍）\n' +
-  '要求：语言专业且亲切，介绍字数控制在 80 字以内。\n' +
-  '特别注意包装上的细小文字，优先识别品牌名和商品类别。'
 
 // Both are real vision models on NVIDIA NIM; the 90B variant is the 404 fallback.
 const MODEL_CHAIN = [
@@ -24,11 +18,6 @@ function sanitizePrompt(input) {
   if (text.length < 5 || text.length > 500) return DEFAULT_PROMPT
   return text
 }
-
-// Enforced as a system message so every client prompt inherits it — vision
-// models tend to drift into English on English/Japanese packaging otherwise.
-const SYSTEM_PROMPT =
-  '你必须始终使用简体中文回答。品牌名、型号等专有名词可保留原文，但其余所有说明文字一律使用简体中文，禁止输出英文句子。'
 
 function buildPayload(model, base64, prompt, stream) {
   return JSON.stringify({
