@@ -40,7 +40,7 @@
 
 - 🎯 **智能识别**：基于 NVIDIA 多模态视觉模型（llama‑3.2‑11b‑vision‑instruct），对画面中心物体输出中文「名称 + 介绍」，支持多语言包装文字
 - 🔄 **双识别模式**：自动模式每 5 秒识别一次（成功后静默 5 秒，避免打断阅读）；手动模式点击按钮即识别，可随时打断上一次请求
-- ⌨️ **打字机呈现**：识别结果以渐变发光标题 + 打字机动画逐字输出，结果区自动滚动到底部
+- 📡 **流式呈现**：识别结果经 SSE 逐 token 流式输出——发光标题随 token 到达实时解析，首字延迟从 ~8s 降至 ~1s；仅支持 JSON 的旧后端自动降级为逐字打字机动画，结果区自动滚动到底部
 - 🔊 **完成提示音**：识别成功播放短促提示音（可静音场景下自动降级）
 - 📶 **状态与诊断**：模式切换 Toast 提示、识别中思考动画、8 秒超时保护、失败诊断信息一键复制
 - 👁️ **访问统计**：站点总访问量（Worker 主通道，不蒜子回退）+ 本设备浏览次数
@@ -65,13 +65,13 @@ flowchart LR
     B --> C[☁️ Cloudflare Worker<br/>转发与安全限制]
     C --> D[🧠 NVIDIA 多模态模型<br/>llama-3.2-11b-vision]
     D --> E[🧹 结果结构化<br/>name · intro · facts]
-    E --> F[⌨️ 打字机动画呈现]
+    E --> F[📡 SSE 流式渲染<br/>降级：打字机]
 ```
 
-1. **采样与压缩**：取摄像头帧中心 60% 区域，压缩为 JPEG（质量 0.2），最长边不超过 640px，降低传输体积
+1. **采样与压缩**：取摄像头帧中心 60% 区域，压缩为 JPEG（质量 0.5），最长边不超过 640px，降低传输体积
 2. **传输与转发**：前端将 Base64 图片与中文提示词发送至 Cloudflare Worker，由其统一转发，密钥不出服务端
 3. **模型推理**：Worker 调用 NVIDIA Integrate API（`/v1/chat/completions`），获取多模态推理结果
-4. **清洗与展示**：提取并清洗文本，解析为 `name / intro / facts` 结构化字段，前端打字机动画呈现
+4. **清洗与展示**：提取并清洗文本，解析为 `name / intro / facts` 结构化字段，经 SSE 逐 token 流式下发（仅 JSON 的旧后端走打字机路径）
 
 ## 📁 项目结构
 
@@ -132,9 +132,9 @@ npm run dev
 | --- | --- | --- |
 | `NVIDIA_API_KEY` | Cloudflare Worker | 生产后端密钥，仅保存在 Worker 端，前端不持有 |
 | `NVIDIA_API_KEY` | Vercel 项目设置 | 仅在使用备用 Serverless 转发（`api/identify.js`）时需要 |
-| `NVIDIA_VISION_MODEL` | Vercel 项目设置 | 可选，覆盖首选视觉模型（降级链固定为 llama-3.2 90B） |
+| `NVIDIA_VISION_MODEL` | Worker 环境变量 / Vercel 项目设置 | 可选，覆盖首选视觉模型（降级链固定为 llama-3.2 90B） |
 | `ACTIVATION_CODES` | Vercel 项目设置 | 合法激活码清单（逗号/换行分隔）；配置后激活码改为服务端校验 |
-| `ALLOWED_ORIGINS` | Vercel 项目设置 | 可选，额外的 CORS 白名单来源（逗号分隔） |
+| `ALLOWED_ORIGINS` | Worker 环境变量 / Vercel 项目设置 | 可选，额外的 CORS 白名单来源（逗号分隔） |
 | `VITE_WORKER_BASE` | 构建时环境变量 | 可选，覆盖 Cloudflare Worker 地址 |
 | `VITE_API_BASE` | 构建时环境变量 | 可选，Vercel 部署地址；配置后激活走服务端校验 |
 | `VITE_STRICT_ACTIVATION` | 构建时环境变量 | 设为 `true` 时后端不可用即拒绝激活（默认允许离线回退） |
@@ -142,8 +142,9 @@ npm run dev
 ## 🔌 接口说明
 
 - **生产链路（Cloudflare Worker）**
-  - `POST` JSON：`{ "imageDataUrl": "<纯 Base64>", "prompt": "<中文提示词>" }`
-  - 返回：NVIDIA 原始结构，前端优先提取 `choices[0].message.content`，解析失败时降级为全文展示
+  - `POST` JSON：`{ "imageDataUrl": "<纯 Base64>", "prompt": "<中文提示词>", "stream": true }`
+  - 返回：流式请求返回 SSE token 流；不支持流式的后端返回 NVIDIA 原始结构，前端优先提取 `choices[0].message.content`，解析失败时降级为全文展示
+  - 硬上限与备用链路一致：图片解码后 ≤ 4.5MB、请求体 ≤ 8MB、每 IP 每分钟限 10 次（超限返回 429）
 - **备用链路（Vercel `POST /api/identify`）**
   - 请求体：`{ "imageDataUrl": "<纯 Base64>", "prompt": "<中文提示词>" }`，提示词将被服务端采用（长度 5–500 字，超限回退默认提示词）
   - 图片解码后限制约 ≤ 4.5MB；每 IP 每分钟限 10 次（超限返回 429）

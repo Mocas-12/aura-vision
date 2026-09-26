@@ -40,7 +40,7 @@
 
 - 🎯 **Smart Recognition**: Powered by the NVIDIA multimodal vision model (llama‑3.2‑11b‑vision‑instruct), outputs a Chinese "name + introduction" for the object at the center of the frame; handles multilingual packaging text
 - 🔄 **Dual Recognition Modes**: Auto mode recognizes every 5 seconds (with a 5-second quiet period after success to avoid interrupting reading); manual mode triggers on button click and can interrupt the previous request at any time
-- ⌨️ **Typewriter Presentation**: Results render with a gradient glowing title + character-by-character typewriter animation, and the result panel auto-scrolls to the bottom
+- 📡 **Streaming Presentation**: Results stream token-by-token over SSE — the glowing title is parsed in real time as tokens arrive, cutting first-token latency from ~8s to ~1s; older JSON-only backends automatically degrade to the character-by-character typewriter animation, and the result panel auto-scrolls to the bottom
 - 🔊 **Completion Sound**: Plays a short beep on successful recognition (auto-degrades in muted scenarios)
 - 📶 **Status & Diagnostics**: Mode-switch toast, thinking animation while recognizing, 8-second timeout guard, one-click copy of failure diagnostics
 - 👁️ **Visit Stats**: Total site page views (Worker primary, busuanzi fallback) + per-device view count
@@ -65,13 +65,13 @@ flowchart LR
     B --> C[☁️ Cloudflare Worker<br/>forwarding & security limits]
     C --> D[🧠 NVIDIA multimodal model<br/>llama-3.2-11b-vision]
     D --> E[🧹 Result structuring<br/>name · intro · facts]
-    E --> F[⌨️ Typewriter animation]
+    E --> F[📡 SSE streaming render<br/>fallback: typewriter]
 ```
 
-1. **Sampling & compression**: Crop the center 60% of the camera frame, compress to JPEG (quality 0.2), longest side no more than 640px, reducing transfer size
+1. **Sampling & compression**: Crop the center 60% of the camera frame, compress to JPEG (quality 0.5), longest side no more than 640px, reducing transfer size
 2. **Transfer & forwarding**: The frontend sends the Base64 image and Chinese prompt to a Cloudflare Worker, which forwards it uniformly; the API key never leaves the server
 3. **Model inference**: The Worker calls the NVIDIA Integrate API (`/v1/chat/completions`) and gets the multimodal inference result
-4. **Cleaning & display**: Extract and clean the text, parse it into structured `name / intro / facts` fields, rendered by the frontend with a typewriter animation
+4. **Cleaning & display**: Extract and clean the text, parse it into structured `name / intro / facts` fields, streamed to the frontend over SSE token-by-token (the typewriter path covers JSON-only backends)
 
 ## 📁 Project Structure
 
@@ -132,9 +132,9 @@ Deployment note: after pushing to the `main` branch, GitHub Actions automaticall
 | --- | --- | --- |
 | `NVIDIA_API_KEY` | Cloudflare Worker | Production backend key, stored only on the Worker side; never held by the frontend |
 | `NVIDIA_API_KEY` | Vercel project settings | Only needed when using the backup Serverless forwarder (`api/identify.js`) |
-| `NVIDIA_VISION_MODEL` | Vercel project settings | Optional, overrides the primary vision model (fallback chain pins llama-3.2 90B) |
+| `NVIDIA_VISION_MODEL` | Worker env / Vercel project settings | Optional, overrides the primary vision model (fallback chain pins llama-3.2 90B) |
 | `ACTIVATION_CODES` | Vercel project settings | List of valid activation codes (comma/newline separated); when set, codes are validated server-side |
-| `ALLOWED_ORIGINS` | Vercel project settings | Optional, extra CORS allow-listed origins (comma separated) |
+| `ALLOWED_ORIGINS` | Worker env / Vercel project settings | Optional, extra CORS allow-listed origins (comma separated) |
 | `VITE_WORKER_BASE` | Build-time env | Optional, overrides the Cloudflare Worker URL |
 | `VITE_API_BASE` | Build-time env | Optional, Vercel deployment base URL; when set, activation goes through server-side validation |
 | `VITE_STRICT_ACTIVATION` | Build-time env | Set to `true` to reject activation when the backend is unreachable (offline fallback is allowed by default) |
@@ -142,8 +142,9 @@ Deployment note: after pushing to the `main` branch, GitHub Actions automaticall
 ## 🔌 API Reference
 
 - **Production chain (Cloudflare Worker)**
-  - `POST` JSON: `{ "imageDataUrl": "<pure Base64>", "prompt": "<Chinese prompt>" }`
-  - Response: raw NVIDIA structure; the frontend prefers extracting `choices[0].message.content`, falling back to full-text display when parsing fails
+  - `POST` JSON: `{ "imageDataUrl": "<pure Base64>", "prompt": "<Chinese prompt>", "stream": true }`
+  - Response: an SSE token stream when streaming; backends without stream support return the raw NVIDIA JSON structure, which the frontend prefers extracting `choices[0].message.content` from, falling back to full-text display when parsing fails
+  - Hard limits mirror the backup chain: decoded image ≤ 4.5MB, body ≤ 8MB, 10 requests/min per IP (429 when exceeded)
 - **Backup chain (Vercel `POST /api/identify`)**
   - Request body: `{ "imageDataUrl": "<pure Base64>", "prompt": "<Chinese prompt>" }`; the prompt is now honored by the server (5–500 chars, falls back to the default prompt out of range)
   - Decoded image is limited to about ≤ 4.5MB; rate limited to 10 requests/min per IP (429 when exceeded)
