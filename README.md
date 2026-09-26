@@ -29,7 +29,7 @@
 - [How It Works](#-how-it-works)
 - [Project Structure](#-project-structure)
 - [Quick Start](#-quick-start)
-- [Configuration](#-configuration)
+- [Configuration](#️-configuration)
 - [API Reference](#-api-reference)
 - [Quota & Activation](#-quota--activation)
 - [FAQ](#-faq)
