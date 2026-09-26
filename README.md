@@ -14,7 +14,7 @@
 
 **[🌐 Live Preview (GitHub Pages)](https://mocas-12.github.io/aura-vision/)**
 
-**English** | [简体中文](./README.zh-CN.md)
+**English** | [简体中文](./README.zh-CN.md) | [日本語](./README.ja-JP.md)
 
 *Open the page → allow camera access → point at any object; recognition runs automatically every 5 seconds*
 

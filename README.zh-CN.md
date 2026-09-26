@@ -14,7 +14,7 @@
 
 **[🌐 在线体验（GitHub Pages）](https://mocas-12.github.io/aura-vision/)**
 
-[English](./README.md) | **简体中文**
+[English](./README.md) | **简体中文** | [日本語](./README.ja-JP.md)
 
 *打开页面 → 允许摄像头 → 对准任意物体，每 5 秒自动识别一次*
 
