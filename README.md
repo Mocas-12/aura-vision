@@ -2,7 +2,7 @@
 
 <img src="public/favicon.svg" width="96" alt="Aura-Vision Logo" />
 
-# Aura‑Vision (寰宇视界)
+# Aura-Vision
 
 **A minimal, hardcore AI visual perception terminal — giving your phone the ability to "see through everything"**
 
