@@ -119,39 +119,9 @@ export function partialStructured(text: string): { name: string; intro: string }
   }
 }
 
-export async function recognizeNearestCenterObject(opts: {
-  imageDataUrl: string
-  prompt?: string
-  signal?: AbortSignal
-}): Promise<Recognition | null> {
-  const url = `${WORKER_BASE}?t=${Date.now()}`
-  const cleanImageUrl = opts.imageDataUrl.replace(/\s/g, '').replace(/^data:[^;]+;base64,/i, '')
-  const requestBody = {
-    imageDataUrl: cleanImageUrl,
-    prompt: opts.prompt ?? DEFAULT_USER_PROMPT,
-  }
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(requestBody),
-      signal: opts.signal,
-    })
-    const responseText = await res.text()
-    if (!res.ok) {
-      console.error('Worker response error', res.status, responseText)
-      throw new Error(`服务器响应异常 (${res.status}): ${responseText}`)
-    }
-    return recognitionFromJsonText(responseText)
-  } catch (e) {
-    console.error('NVIDIA API network error', e)
-    return failureRecognition(e)
-  }
-}
-
 /**
- * Streaming twin of recognizeNearestCenterObject. Sends `stream: true` and
- * forwards each SSE content delta to onDelta as it arrives; resolves with the
+ * Sends `stream: true` and forwards each SSE content delta to onDelta as it
+ * arrives; resolves with the final Recognition. Graceful degradation: if the
  * final Recognition. Graceful degradation: if the backend does not answer
  * with an SSE stream (old Worker without stream support), the JSON body is
  * parsed whole and onDelta never fires — callers must handle both cases.
