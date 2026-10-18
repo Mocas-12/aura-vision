@@ -218,9 +218,6 @@ export function useRecognition({
           }
           lastSigRef.current = sig
         }
-      } else {
-        setRec({ name: '网络繁忙', intro: '请稍后重试', facts: diagText() })
-        setProc('empty')
       }
     } catch (e) {
       console.error('Processing Status: error', e)

@@ -25,16 +25,19 @@ const UPSTREAM_TIMEOUT_MS = 8000
 // start gets a fresh map. For hard cross-instance limits put a Cloudflare WAF
 // rate-limiting rule (free plan includes one) in front of this route.
 const rateBuckets = new Map()
-function checkRateLimit(request, { windowMs = 60 * 1000, max = 10 } = {}) {
+function checkRateLimit(request, { windowMs = 60 * 1000, max = 10, scope = 'identify' } = {}) {
   const ip =
     request.headers.get('cf-connecting-ip') ||
     request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
     'unknown'
   const now = Date.now()
-  let bucket = rateBuckets.get(ip)
+  // Buckets are scoped per route family: a /stats ping must not eat into the
+  // identify budget (and vice versa).
+  const key = `${scope}:${ip}`
+  let bucket = rateBuckets.get(key)
   if (!bucket || now > bucket.resetAt) {
     bucket = { count: 0, resetAt: now + windowMs }
-    rateBuckets.set(ip, bucket)
+    rateBuckets.set(key, bucket)
   }
   bucket.count += 1
   if (rateBuckets.size > 5000) {
@@ -223,7 +226,7 @@ async function statsGet(env, cors) {
 async function statsInc(env, cors, request) {
   // The counter is a vanity metric, but an unauthenticated write endpoint
   // should still not be floodable — a small per-IP budget is enough.
-  const limit = checkRateLimit(request, { max: 30, windowMs: 60 * 1000 })
+  const limit = checkRateLimit(request, { max: 30, windowMs: 60 * 1000, scope: 'stats' })
   if (limit.limited) {
     return json({ error: 'Too many requests, please retry later' }, 429, {
       ...cors,

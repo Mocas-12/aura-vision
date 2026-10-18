@@ -150,7 +150,7 @@ module.exports = async function (req, res) {
     return
   }
 
-  const raw = String(input.imageDataUrl || input.base64 || input.image || '')
+  const raw = String(input?.imageDataUrl || input?.base64 || input?.image || '')
   const base64 = raw.replace(/^data:[^;]+;base64,/i, '').replace(/\s/g, '')
   if (!base64) {
     sendJson(res, 400, { error: 'Missing image base64' })
@@ -162,9 +162,9 @@ module.exports = async function (req, res) {
     return
   }
 
-  const prompt = sanitizePrompt(input.prompt)
+  const prompt = sanitizePrompt(input?.prompt)
 
-  if (input.stream === true) {
+  if (input?.stream === true) {
     for (const model of MODEL_CHAIN) {
       let result
       try {

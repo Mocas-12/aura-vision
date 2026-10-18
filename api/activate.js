@@ -51,7 +51,7 @@ module.exports = async function (req, res) {
     return
   }
 
-  const code = String(input.code || '').trim().toUpperCase()
+  const code = String(input?.code || '').trim().toUpperCase()
   if (!code) {
     sendJson(res, 400, { ok: false, error: 'Missing code' })
     return
