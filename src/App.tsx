@@ -55,13 +55,21 @@ export default function App() {
   }, [])
 
   return (
-    <div className="w-full min-h-screen relative flex flex-col" style={{ paddingBottom: '100px' }}>
-      <CameraView videoRef={videoRef} canvasRef={canvasRef} cameraError={cameraError} busy={busy} />
-      {cameraError && <CameraErrorOverlay message={cameraError} />}
+    <div className="vision-app">
+      <header className="vision-header">
+        <h1>Aura-Vision</h1>
+        <p>对准物体，查看识别结果。</p>
+      </header>
+      <main className="vision-workspace">
+        <div className="camera-region">
+          <CameraView videoRef={videoRef} canvasRef={canvasRef} cameraError={cameraError} busy={busy} />
+          {cameraError && <CameraErrorOverlay message={cameraError} />}
+        </div>
       <ResultPanel
         rec={rec}
         busy={busy}
         cameraReady={cameraReady}
+        cameraError={cameraError}
         streaming={streaming}
         liveText={liveText}
         liveName={liveName}
@@ -75,6 +83,7 @@ export default function App() {
         apiWarn={apiWarn}
         resultRef={resultRef}
       />
+      </main>
       <SiteFooter sitePv={sitePv} devicePv={devicePv} />
       <ActivationModal
         open={showActivation}

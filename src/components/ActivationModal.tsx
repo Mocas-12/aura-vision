@@ -58,34 +58,26 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
 
   return (
     <div
-      className="activate-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+      className="activate-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
       <div
-        className="activate-panel cyber-panel rounded-3xl w-full max-w-[440px] px-6 py-5"
+        className="activate-panel cyber-panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby="activation-title"
       >
-        <div className="flex items-center justify-between">
-          <div
-            className="flex items-center gap-2 text-[11px] cyber-soft"
-            style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', letterSpacing: '0.18em' }}
-          >
-            <span
-              className={`status-dot inline-block w-1.5 h-1.5 rounded-full ${error ? 'bg-red-400' : 'bg-cyan-300'}`}
-              style={{ boxShadow: '0 0 6px currentColor' }}
-            />
-            AURA-VISION // ACTIVATION
+        <div className="activation-heading">
+          <div>
+            Aura-Vision 激活
           </div>
           <button
             type="button"
             aria-label="关闭"
             onClick={onClose}
-            className="w-7 h-7 rounded-full border border-white/15 text-white/60 hover:text-white hover:border-cyan-300/50 hover:bg-white/5 transition text-sm leading-none"
+            className="dialog-close"
           >
             ✕
           </button>
@@ -94,13 +86,7 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
         {phase === 'success' ? (
           <div className="py-8 flex flex-col items-center text-center">
             <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
-              style={{
-                background: 'rgba(0, 229, 255, 0.12)',
-                border: '1px solid rgba(0, 229, 255, 0.5)',
-                boxShadow: '0 0 24px rgba(0, 229, 255, 0.35)',
-                color: '#7df3ff',
-              }}
+              className="activation-success"
             >
               ✓
             </div>
@@ -120,8 +106,7 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-cyan-300"
-                style={{ filter: 'drop-shadow(0 0 6px rgba(0,229,255,0.45))' }}
+                className="cyber-text"
                 aria-hidden="true"
               >
                 <rect x="4" y="10.5" width="16" height="10.5" rx="2.5" />
@@ -132,7 +117,7 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
             </h2>
             <div className="grad-divider mt-3" />
             <p className="mt-3 text-sm cyber-body">
-              免费识别次数（<span className="cyber-text" style={{ fontFamily: 'monospace' }}>15</span> 次）已耗尽。输入激活码永久解锁，无需注册。
+              免费识别次数（<span className="cyber-text numeric">15</span> 次）已耗尽。输入激活码永久解锁，无需注册。
             </p>
 
             <form
@@ -145,7 +130,7 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
               <div key={shake} className={shake > 0 ? 'shake-once' : ''}>
                 <input
                   autoFocus
-                  className={`cyber-input w-full px-4 py-3 text-base ${error ? 'border-red-400/60' : ''}`}
+                  className="cyber-input"
                   placeholder="CY□□□S1X"
                   value={code}
                   maxLength={16}
@@ -162,11 +147,10 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
               </div>
               {error && (
                 <p
-                  className="mt-2.5 text-sm text-red-300"
-                  style={{ textShadow: '0 0 8px rgba(255, 92, 118, 0.35)' }}
+                  className="activation-error"
                   role="alert"
                 >
-                  ⚠ {error}
+                  {error}
                 </p>
               )}
 
@@ -189,16 +173,13 @@ function ActivationDialog({ onClose, onActivated }: DialogProps) {
                     }
                   }}
                 >
-                  获取激活码 ↗
+                  获取激活码
                 </button>
               </div>
             </form>
 
-            <p
-              className="mt-4 text-[11px] cyber-soft text-center"
-              style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', letterSpacing: '0.08em' }}
-            >
-              UNLOCK://DEVICE-BOUND · 激活后本设备永久解锁
+            <p className="activation-note">
+              激活后本设备永久解锁
             </p>
           </>
         )}

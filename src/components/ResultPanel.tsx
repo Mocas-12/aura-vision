@@ -6,6 +6,7 @@ interface ResultPanelProps {
   rec: Recognition | null
   busy: boolean
   cameraReady: boolean
+  cameraError: string | null
   streaming: boolean
   /** Accumulated SSE text while an answer is still streaming in; null otherwise. */
   liveText: string | null
@@ -26,6 +27,7 @@ export default function ResultPanel({
   rec,
   busy,
   cameraReady,
+  cameraError,
   streaming,
   liveText,
   liveName,
@@ -47,11 +49,13 @@ export default function ResultPanel({
   }
 
   return (
-    <div className="w-full p-4 pb-6">
-      <div className="glass rounded-3xl p-4">
-        <div className="flex flex-wrap items-center justify-between gap-y-2">
-          <div className="text-sm cyber-soft">
-            {liveText !== null
+    <section className="result-region" aria-label="识别结果">
+      <div className="result-panel">
+        <div className="result-controls">
+          <div className="recognition-state" role="status">
+            {cameraError
+              ? '相机不可用'
+              : liveText !== null
               ? 'AI 正在输出中…'
               : streaming
                 ? 'AI 正在详细介绍中…'
@@ -61,7 +65,7 @@ export default function ResultPanel({
                     ? '待机'
                     : '摄像头启动中…'}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="recognition-actions">
             <div className="flex items-center gap-2">
               <span className="text-sm cyber-soft">自动识别</span>
               <button
@@ -91,14 +95,14 @@ export default function ResultPanel({
           </div>
         </div>
         {apiWarn && (
-          <div className="mt-2 text-sm text-red-300">
+          <div className="api-warning" role="alert">
             {apiWarn}
           </div>
         )}
         {rec?.name === '识别失败' && typeof rec?.intro === 'string' && rec.intro.includes('识别受阻') && (
           <div className="mt-3 flex gap-2">
             <button
-              className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20"
+              className="secondary-btn"
               onClick={() => {
                 const text = `${rec?.intro ?? ''}\n${rec?.facts ?? ''}`
                 navigator.clipboard?.writeText(text).catch(() => {})
@@ -107,7 +111,7 @@ export default function ResultPanel({
               复制诊断信息
             </button>
             <button
-              className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20"
+              className="secondary-btn"
               onClick={() => {
                 try {
                   window.open(window.location.href, '_blank')
@@ -121,15 +125,13 @@ export default function ResultPanel({
           </div>
         )}
         <div
-          className="mt-2 scrollbox cyber-panel"
-          style={{ height: 'auto', minHeight: '150px', maxHeight: '40vh', WebkitOverflowScrolling: 'touch', overflowY: 'auto', padding: '15px' }}
+          className="scrollbox cyber-panel"
           ref={resultRef}
         >
-          <div className="text-2xl font-semibold grad-title">{(liveName ?? shownName) || '等待识别…'}</div>
+          <h2 className="grad-title">{(liveName ?? shownName) || '等待识别…'}</h2>
           <div className="grad-divider mt-2" />
           <div
-            className="mt-2 text-sm whitespace-pre-wrap break-all cyber-body"
-            style={{ lineHeight: 1.6, fontSize: '1.1rem' }}
+            className="recognition-copy cyber-body"
           >
             {busy && liveText === null ? (
               <span className="thinking">
@@ -149,8 +151,7 @@ export default function ResultPanel({
           </div>
           {(rec?.name === '识别失败' || (rec?.facts ?? '').includes(DIAG_MARK)) && (
             <div
-              className="mt-3 text-sm cyber-text whitespace-pre-wrap break-all"
-              style={{ lineHeight: 1.6, fontSize: '1.1rem' }}
+              className="recognition-copy cyber-text"
             >
               {shownFacts}
             </div>
@@ -158,10 +159,10 @@ export default function ResultPanel({
         </div>
       </div>
       {toastMsg && (
-        <div className="toast">
+        <div className="toast" role="status">
           <div className="inner">{toastMsg}</div>
         </div>
       )}
-    </div>
+    </section>
   )
 }

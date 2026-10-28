@@ -26,6 +26,7 @@ dist-ssr
 # Playwright
 test-results
 playwright-report
+.hallmark/
 
 # Env files (keep only *.example in git)
 .env
